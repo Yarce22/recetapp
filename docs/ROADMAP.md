@@ -31,10 +31,18 @@ the suggestions built on it cannot be.
 - `apps/api` with `POST /suggestions`, `GEMINI_API_KEY` server-side only
 - Schema validation of model output, rejecting malformed responses
 - Rate limiting per device identifier plus a global quota
+- `EnforceSuggestionMode` domain service, test-first, covering strict, flexible
+  and dislikes
 - `RecipeSuggestionService` HTTP adapter in the app
-- Discover screen: suggestions sorted by coverage
+- Discover screen: suggestions sorted by coverage, with the strict / flexible
+  toggle and an editable staples list
 
-Done when: your real pantry produces dishes you could actually cook tonight.
+Done when: your real pantry produces dishes you could actually cook tonight,
+and strict mode never proposes something you do not have.
+
+The mode filter is written test-first with fixtures of deliberately
+non-compliant model responses. It is the only thing standing between the
+feature and a model that improvises ingredients.
 
 ## Phase 3 - Recipe detail
 
@@ -78,6 +86,8 @@ These are deferred on purpose, not forgotten:
 | Risk | Mitigation |
 | --- | --- |
 | Model invents impossible quantities | Range checks and schema validation at the BFF |
+| Model ignores strict mode and adds ingredients | `EnforceSuggestionMode` filters server-side; the prompt is never the enforcement |
+| Strict mode returns almost nothing | Staples list, one tightened retry, honest empty state |
 | Gemini cost grows with usage | Per-device rate limit, global quota, cache repeated pantry sets |
 | Ingredient name matching is fuzzy | Normalize on write, keep matching a testable domain service |
 | No accounts weakens abuse control | Accepted for MVP; revisit if quota abuse appears |

@@ -129,7 +129,7 @@ Endpoints:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/suggestions` | Pantry contents in, candidate dishes out |
+| `POST` | `/suggestions` | Pantry contents plus preferences in, compliant dishes out |
 | `POST` | `/recipes/:id` | Full recipe for a chosen dish |
 | `POST` | `/meal-plan` | Weekly menu proposal from pantry and preferences |
 
@@ -137,7 +137,41 @@ Model output is validated against a schema at the BFF boundary before it is
 returned. An LLM response is untrusted input: it is parsed and checked, never
 passed through to the client as-is.
 
-## 7. Shared contracts
+## 7. Enforcing the suggestion mode
+
+The app offers two ways to ask for dishes:
+
+- `strict` - only what is registered in the pantry, plus the staples list
+- `flexible` - Gemini may introduce ingredients the user would have to buy
+
+The important part is not the prompt. It is that the prompt is not trusted.
+
+```
+prompt asks  ──▶  Gemini responds  ──▶  schema validation  ──▶  EnforceSuggestionMode
+   intent                                  shape is valid          rules are satisfied
+```
+
+A language model given "use only these ingredients" complies most of the time
+and then quietly adds olive oil. That is a tendency, not a contract. So the BFF
+re-checks every returned ingredient against the pantry and the staples list, and
+drops any suggestion that violates the active mode before it is serialized back
+to the app.
+
+Consequences that have to be designed for, not discovered later:
+
+| Situation | Handling |
+| --- | --- |
+| Strict filtering leaves too few dishes | Retry once with a tightened prompt, then return what survived with an honest empty state |
+| Model returns a dish with an unregistered staple | Kept if the staple is enabled, dropped otherwise |
+| Model ignores a dietary restriction or dislike | Dropped unconditionally - allergies are never left to the model |
+
+Filtering runs on the BFF rather than on the device for two reasons: a rejected
+suggestion should not consume the user's bandwidth or battery, and a retry can
+happen server-side without a round trip. `EnforceSuggestionMode` itself is a
+pure function shared through `packages/contracts`, so the app can re-apply it
+defensively without duplicating the rules.
+
+## 8. Shared contracts
 
 `packages/contracts` holds the request and response types for the endpoints
 above, imported by both `apps/mobile` and `apps/api`. One definition, so a
