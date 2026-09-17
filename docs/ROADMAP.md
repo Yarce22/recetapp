@@ -4,7 +4,7 @@ Phases are ordered so that each one ends with something runnable on a real
 device. Strict TDD applies from Phase 1: domain and use cases get a failing
 test before an implementation exists.
 
-## Phase 0 - Foundations
+## Phase 0 - Foundations [done]
 
 - Monorepo workspaces, TypeScript config, ESLint, Prettier
 - Expo app boots with Expo Router and the tab skeleton
@@ -13,7 +13,7 @@ test before an implementation exists.
 
 Done when: the app opens on a device, tabs navigate, one trivial test passes.
 
-## Phase 1 - Pantry (no AI yet)
+## Phase 1 - Pantry (no AI yet) [done]
 
 - `Ingredient`, `Quantity`, `PantryItem` with their rules, test-first
 - SQLite schema and migration runner

@@ -11,9 +11,18 @@ A kind of food, independent of how much of it we own.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `id` | `IngredientId` | |
-| `name` | `string` | Normalized for matching ("tomato", not "Tomatoes") |
+| `name` | `string` | Normalized for matching: lowercased, whitespace collapsed, accents stripped |
+| `displayName` | `string` | What the user typed, kept for display |
 | `category` | `IngredientCategory` | produce, dairy, meat, grain, spice, other |
 | `defaultUnit` | `Unit` | |
+
+Normalization deliberately does NOT convert plurals to singular. Doing that
+correctly needs per-language rules, and a naive suffix strip mangles words like
+"arroz". Plural handling belongs in a lookup table and is deferred until
+matching quality actually demands it.
+
+The eñe is preserved rather than folded into `n`: in Spanish it is a distinct
+letter, and folding it would merge words that are genuinely different.
 
 ### Quantity (value object)
 `{ amount: number, unit: Unit }`
