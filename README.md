@@ -35,6 +35,25 @@ recetapp/
 - [Domain model](docs/DOMAIN.md) - entities, use cases, and ports
 - [Roadmap](docs/ROADMAP.md) - delivery phases
 
+## Working locally
+
+```bash
+npm install          # once, from the repo root
+npm run mobile       # starts the Expo dev server
+```
+
+From `apps/mobile` you also have `npm run typecheck`, `npm test` and
+`npm run lint`.
+
+### A note on OneDrive
+
+This repository currently lives inside a OneDrive folder. `node_modules`
+contains tens of thousands of small files, and syncing them causes slow
+installs, file locks during builds, and occasional corrupted packages that look
+like random build failures. Moving the repository outside OneDrive is the
+durable fix.
+
 ## Status
 
-Planning and scaffolding. No application code yet.
+Phase 0 complete: the app boots with four tabs, typecheck is clean and the
+test runner is wired. See [the roadmap](docs/ROADMAP.md) for what comes next.
