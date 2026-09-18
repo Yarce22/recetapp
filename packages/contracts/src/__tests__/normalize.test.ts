@@ -1,4 +1,4 @@
-import { normalizeIngredientName } from '../normalize';
+import { normalizeIngredientName } from '../normalize.ts';
 
 describe('normalizeIngredientName', () => {
   it('lowercases and trims', () => {

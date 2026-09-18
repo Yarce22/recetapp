@@ -9,6 +9,6 @@
  * them would not surface as an error - it would surface as wrong answers.
  */
 
-export * from './types';
-export * from './normalize';
-export * from './enforce-suggestion-mode';
+export * from './types.ts';
+export * from './normalize.ts';
+export * from './enforce-suggestion-mode.ts';

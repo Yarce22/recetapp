@@ -1,5 +1,5 @@
-import { enforceSuggestionMode } from '../enforce-suggestion-mode';
-import type { PreferencesDto, RawDishSuggestion } from '../index';
+import { enforceSuggestionMode } from '../enforce-suggestion-mode.ts';
+import type { PreferencesDto, RawDishSuggestion } from '../index.ts';
 
 const preferences = (overrides: Partial<PreferencesDto> = {}): PreferencesDto => ({
   suggestionMode: 'strict',

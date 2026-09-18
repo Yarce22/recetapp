@@ -1,5 +1,5 @@
-import { normalizeIngredientName } from './normalize';
-import type { DishSuggestionDto, PreferencesDto, RawDishSuggestion } from './types';
+import { normalizeIngredientName } from './normalize.ts';
+import type { DishSuggestionDto, PreferencesDto, RawDishSuggestion } from './types.ts';
 
 export type EnforceSuggestionModeInput = {
   /** What the model proposed, before anything has been verified. */
