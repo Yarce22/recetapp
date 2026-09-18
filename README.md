@@ -45,6 +45,20 @@ npm run mobile       # starts the Expo dev server
 From `apps/mobile` you also have `npm run typecheck`, `npm test` and
 `npm run lint`.
 
+### Running on web
+
+The web target works, but it needs two things that `metro.config.js` already
+sets up: `.wasm` registered as an asset extension, because `expo-sqlite` runs
+on web through a WebAssembly build of SQLite, and the
+`Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy` headers, because
+that build needs `SharedArrayBuffer` and browsers only expose it to
+cross-origin isolated documents.
+
+If the web bundle ever fails with `Unable to resolve module
+./wa-sqlite/wa-sqlite.wasm`, that configuration is what went missing. Restart
+the dev server with `--clear` after changing `metro.config.js`: Metro caches
+the resolver and will keep reporting the old error otherwise.
+
 ### A note on OneDrive
 
 This repository currently lives inside a OneDrive folder. `node_modules`
