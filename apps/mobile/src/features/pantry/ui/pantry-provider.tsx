@@ -1,8 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
-import { getDatabase } from '@/shared/db/client';
-
 import type { AddPantryItemInput } from '../application/add-pantry-item';
 import { makeAddPantryItem } from '../application/add-pantry-item';
 import { makeListPantry } from '../application/list-pantry';
@@ -10,9 +8,9 @@ import { makeRemovePantryItem } from '../application/remove-pantry-item';
 import { makeUpdatePantryQuantity } from '../application/update-pantry-quantity';
 import type { IngredientId } from '../domain/ingredient';
 import { isLowStock } from '../domain/pantry-item';
-import type { PantryEntry } from '../domain/pantry-repository';
+import type { PantryEntry, PantryRepository } from '../domain/pantry-repository';
 import type { Quantity } from '../domain/quantity';
-import { SqlitePantryRepository } from '../infrastructure/sqlite-pantry-repository';
+import { createPantryRepository } from '../infrastructure/create-pantry-repository';
 
 type PantryContextValue = {
   entries: PantryEntry[];
@@ -28,11 +26,12 @@ type PantryContextValue = {
 const PantryContext = createContext<PantryContextValue | null>(null);
 
 /**
- * Wires the pantry use cases to the SQLite adapter and exposes them to the
+ * Wires the pantry use cases to a repository adapter and exposes them to the
  * screens.
  *
- * This is the only place that knows which adapter is in use. Swapping SQLite
- * for a synced backend is a change to the two lines below, not to any screen.
+ * Which adapter that is gets decided by `createPantryRepository`, which has a
+ * platform-specific web variant. Nothing here, and nothing in any screen,
+ * knows whether the data lives in SQLite or somewhere else.
  */
 export function PantryProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<PantryEntry[]>([]);
@@ -40,12 +39,12 @@ export function PantryProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const useCases = useMemo(() => {
-    const repositoryPromise = getDatabase().then((db) => new SqlitePantryRepository(db));
+    const repositoryPromise = createPantryRepository();
 
     // Each use case awaits the connection itself, so the provider can render
     // before the database has finished opening.
     const withRepository = <A, R>(
-      make: (repo: SqlitePantryRepository) => (arg: A) => Promise<R>,
+      make: (repo: PantryRepository) => (arg: A) => Promise<R>,
     ) => {
       return async (arg: A): Promise<R> => make(await repositoryPromise)(arg);
     };

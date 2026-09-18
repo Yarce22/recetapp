@@ -47,25 +47,22 @@ From `apps/mobile` you also have `npm run typecheck`, `npm test` and
 
 ### Running on web
 
-The web target works, but it needs two things that `metro.config.js` already
-sets up: `.wasm` registered as an asset extension, because `expo-sqlite` runs
-on web through a WebAssembly build of SQLite, and the
-`Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy` headers, because
-that build needs `SharedArrayBuffer` and browsers only expose it to
-cross-origin isolated documents.
+The web target runs, but it does not persist anything: reloading the page
+starts from an empty pantry.
 
-If the web bundle ever fails with `Unable to resolve module
-./wa-sqlite/wa-sqlite.wasm`, that configuration is what went missing. Restart
-the dev server with `--clear` after changing `metro.config.js`: Metro caches
-the resolver and will keep reporting the old error otherwise.
+`expo-sqlite` reaches web through a WebAssembly build that ships as a web
+worker, and Expo's chunk serializer could not produce a standalone chunk for
+that worker in this project - every web bundle failed with
+`Worker chunk not found for: expo-sqlite/web/worker.ts`.
 
-### A note on OneDrive
+Rather than patch the bundler, the repository port is satisfied with a
+different adapter on web. `create-pantry-repository.web.ts` returns the
+in-memory repository, so expo-sqlite never enters the web bundle at all.
+Native keeps its SQLite storage untouched.
 
-This repository currently lives inside a OneDrive folder. `node_modules`
-contains tens of thousands of small files, and syncing them causes slow
-installs, file locks during builds, and occasional corrupted packages that look
-like random build failures. Moving the repository outside OneDrive is the
-durable fix.
+This is what the ports in [the architecture](docs/ARCHITECTURE.md) are for. If
+web ever becomes worth persisting, the replacement is an IndexedDB adapter
+behind that same function, and no feature code changes.
 
 ## Status
 
