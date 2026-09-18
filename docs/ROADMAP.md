@@ -26,7 +26,7 @@ Done when: you can register what is in your kitchen and it survives a restart.
 This phase deliberately contains no Gemini call. If the pantry is not solid,
 the suggestions built on it cannot be.
 
-## Phase 2 - BFF and first suggestions
+## Phase 2 - BFF and first suggestions [done]
 
 - `apps/api` with `POST /suggestions`, `GEMINI_API_KEY` server-side only
 - Schema validation of model output, rejecting malformed responses

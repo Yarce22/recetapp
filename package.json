@@ -11,7 +11,8 @@
     "mobile": "npm run start --workspace @recetapp/mobile",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "api": "npm run dev --workspace @recetapp/api"
   },
   "engines": {
     "node": ">=20"

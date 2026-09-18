@@ -38,6 +38,17 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    version: 2,
+    statements: [
+      // Small key/value store for things that are settings rather than data:
+      // preferences and the anonymous device identifier the BFF rate-limits on.
+      `CREATE TABLE IF NOT EXISTS settings (
+        key   TEXT PRIMARY KEY NOT NULL,
+        value TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
 
 /**

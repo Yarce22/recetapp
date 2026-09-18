@@ -39,7 +39,19 @@ recetapp/
 
 ```bash
 npm install          # once, from the repo root
-npm run mobile       # starts the Expo dev server
+npm run mobile       # Expo dev server
+npm run api          # BFF, needs apps/api/.env
+```
+
+The BFF holds the Gemini key. Copy `apps/api/.env.example` to
+`apps/api/.env` and put a Google AI Studio key in it; the server refuses to
+start without one, on purpose.
+
+On a physical device `localhost` is the phone, not your machine, so point the
+app at your machine instead:
+
+```bash
+EXPO_PUBLIC_API_URL=http://192.168.1.5:8787 npm run mobile
 ```
 
 From `apps/mobile` you also have `npm run typecheck`, `npm test` and
@@ -66,5 +78,5 @@ behind that same function, and no feature code changes.
 
 ## Status
 
-Phase 0 complete: the app boots with four tabs, typecheck is clean and the
-test runner is wired. See [the roadmap](docs/ROADMAP.md) for what comes next.
+Phases 0 to 2 complete: pantry storage, the Gemini-backed BFF, and the
+Discover screen with strict and flexible suggestions. See [the roadmap](docs/ROADMAP.md) for what comes next.
