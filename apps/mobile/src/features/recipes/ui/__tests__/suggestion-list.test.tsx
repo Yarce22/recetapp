@@ -70,9 +70,7 @@ describe('SuggestionList', () => {
   });
 
   it('explains an empty strict result and points at the way out', () => {
-    render(
-      <SuggestionList suggestions={[]} filteredOut={5} mode="strict" onSelect={jest.fn()} />,
-    );
+    render(<SuggestionList suggestions={[]} filteredOut={5} mode="strict" onSelect={jest.fn()} />);
 
     expect(screen.getByText(/nothing you can make/i)).toBeTruthy();
     expect(screen.getByText(/flexible/i)).toBeTruthy();

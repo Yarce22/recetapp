@@ -35,11 +35,7 @@ function buildSuggestionPrompt(pantry: string[], preferences: PreferencesDto): s
   ].join('\n');
 }
 
-function buildRecipePrompt(
-  title: string,
-  pantry: string[],
-  preferences: PreferencesDto,
-): string {
+function buildRecipePrompt(title: string, pantry: string[], preferences: PreferencesDto): string {
   return [
     `Write the full recipe for the dish titled ${JSON.stringify(title)}.`,
     '',

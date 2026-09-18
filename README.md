@@ -8,14 +8,14 @@ menu, and warns you when an ingredient is running low.
 
 ## Stack
 
-| Layer | Choice |
-| --- | --- |
-| Mobile | Expo (React Native) + TypeScript |
-| Routing | Expo Router (file-based) |
-| Local storage | SQLite via `expo-sqlite` (local-first) |
-| AI | Google Gemini, reached through our own backend |
-| Backend | Stateless BFF that proxies Gemini (never ships the API key) |
-| Builds | EAS Build -> real `.aab` / `.ipa` for Play Store and App Store |
+| Layer         | Choice                                                         |
+| ------------- | -------------------------------------------------------------- |
+| Mobile        | Expo (React Native) + TypeScript                               |
+| Routing       | Expo Router (file-based)                                       |
+| Local storage | SQLite via `expo-sqlite` (local-first)                         |
+| AI            | Google Gemini, reached through our own backend                 |
+| Backend       | Stateless BFF that proxies Gemini (never ships the API key)    |
+| Builds        | EAS Build -> real `.aab` / `.ipa` for Play Store and App Store |
 
 ## Repository layout
 
@@ -54,8 +54,14 @@ app at your machine instead:
 EXPO_PUBLIC_API_URL=http://192.168.1.5:8787 npm run mobile
 ```
 
-From `apps/mobile` you also have `npm run typecheck`, `npm test` and
-`npm run lint`.
+From the repo root:
+
+```bash
+npm run typecheck    # all workspaces
+npm test             # all workspaces
+npm run lint         # eslint across the repo
+npm run format       # prettier --write
+```
 
 ### Running on web
 

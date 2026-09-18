@@ -42,7 +42,13 @@ export function PantryList({ entries, onSelect }: PantryListProps) {
   );
 }
 
-function PantryRow({ entry, onSelect }: { entry: PantryEntry; onSelect: PantryListProps['onSelect'] }) {
+function PantryRow({
+  entry,
+  onSelect,
+}: {
+  entry: PantryEntry;
+  onSelect: PantryListProps['onSelect'];
+}) {
   const theme = useTheme();
   const low = isLowStock(entry.item);
 
@@ -50,7 +56,8 @@ function PantryRow({ entry, onSelect }: { entry: PantryEntry; onSelect: PantryLi
     <Pressable
       accessibilityRole="button"
       onPress={() => onSelect(entry)}
-      style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
+      style={[styles.row, { backgroundColor: theme.backgroundElement }]}
+    >
       <View style={styles.rowText}>
         <ThemedText type="smallBold">{entry.ingredient.displayName}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">

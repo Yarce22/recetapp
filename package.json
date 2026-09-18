@@ -11,10 +11,21 @@
     "mobile": "npm run start --workspace @recetapp/mobile",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "api": "npm run dev --workspace @recetapp/api"
+    "lint": "eslint .",
+    "api": "npm run dev --workspace @recetapp/api",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "^57.0.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.9.8",
+    "typescript-eslint": "^8.70.0"
   }
 }

@@ -35,7 +35,10 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
   const [threshold, setThreshold] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const inputStyle = [styles.input, { backgroundColor: theme.backgroundElement, color: theme.text }];
+  const inputStyle = [
+    styles.input,
+    { backgroundColor: theme.backgroundElement, color: theme.text },
+  ];
 
   async function handleSubmit() {
     setError(null);
@@ -122,7 +125,8 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
         accessibilityRole="button"
         disabled={submitting}
         onPress={handleSubmit}
-        style={[styles.submit, { backgroundColor: theme.backgroundSelected }]}>
+        style={[styles.submit, { backgroundColor: theme.backgroundSelected }]}
+      >
         <ThemedText type="smallBold">{submitting ? 'Saving...' : 'Add to pantry'}</ThemedText>
       </Pressable>
     </View>

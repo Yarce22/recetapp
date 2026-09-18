@@ -1,0 +1,36 @@
+# Line endings
+#
+# This machine has core.autocrlf=true, which would write CRLF into the working
+# tree on a fresh clone while the repository stores LF. That mismatch is what
+# produces the "LF will be replaced by CRLF" warnings, and it makes formatters
+# and linters disagree with git about what changed.
+#
+# Declaring it here settles it for every clone on every OS, regardless of each
+# developer's local git config: text files are LF in the repository and LF on
+# disk.
+* text=auto eol=lf
+
+# Windows-only scripts genuinely need CRLF to run.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never touched, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.mp4 binary
+*.zip binary
+*.keystore binary
+*.jks binary
+*.hbc binary
+
+# Lockfiles are generated. Marking them keeps them out of language statistics
+# and collapses them in diffs, where reading them line by line helps nobody.
+package-lock.json linguist-generated=true -diff

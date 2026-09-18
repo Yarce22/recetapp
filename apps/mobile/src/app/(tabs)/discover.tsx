@@ -31,9 +31,7 @@ export default function DiscoverScreen() {
 
   const service = useMemo(
     () =>
-      deviceId
-        ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId })
-        : null,
+      deviceId ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId }) : null,
     [deviceId],
   );
 
@@ -83,7 +81,8 @@ export default function DiscoverScreen() {
                       ? theme.backgroundSelected
                       : theme.backgroundElement,
                 },
-              ]}>
+              ]}
+            >
               <ThemedText type="smallBold">
                 {mode === 'strict' ? 'Only what I have' : 'I can buy a little'}
               </ThemedText>
@@ -109,7 +108,8 @@ export default function DiscoverScreen() {
                     backgroundColor: enabled ? theme.backgroundSelected : theme.backgroundElement,
                     opacity: enabled ? 1 : 0.5,
                   },
-                ]}>
+                ]}
+              >
                 <ThemedText type="small">{staple}</ThemedText>
               </Pressable>
             );
@@ -126,10 +126,9 @@ export default function DiscoverScreen() {
               backgroundColor: theme.backgroundSelected,
               opacity: loading || entries.length === 0 ? 0.5 : 1,
             },
-          ]}>
-          <ThemedText type="smallBold">
-            {loading ? 'Thinking...' : 'What can I cook?'}
-          </ThemedText>
+          ]}
+        >
+          <ThemedText type="smallBold">{loading ? 'Thinking...' : 'What can I cook?'}</ThemedText>
         </Pressable>
 
         {entries.length === 0 ? (

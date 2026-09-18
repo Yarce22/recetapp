@@ -1,8 +1,4 @@
-import {
-  findForbiddenIngredients,
-  findMissingIngredients,
-  scaleRecipe,
-} from '../recipe-rules.ts';
+import { findForbiddenIngredients, findMissingIngredients, scaleRecipe } from '../recipe-rules.ts';
 import type { PreferencesDto, RecipeDto } from '../types.ts';
 
 const preferences = (overrides: Partial<PreferencesDto> = {}): PreferencesDto => ({
@@ -34,7 +30,9 @@ describe('findForbiddenIngredients', () => {
   });
 
   it('finds a disliked ingredient regardless of spelling', () => {
-    expect(findForbiddenIngredients(['Maní'], preferences({ dislikes: ['mani'] }))).toEqual(['Maní']);
+    expect(findForbiddenIngredients(['Maní'], preferences({ dislikes: ['mani'] }))).toEqual([
+      'Maní',
+    ]);
   });
 
   it('matches as a substring, so avoiding peanut also catches peanut butter', () => {
@@ -44,13 +42,17 @@ describe('findForbiddenIngredients', () => {
   });
 
   it('ignores blank dislike entries rather than matching everything', () => {
-    expect(findForbiddenIngredients(['tomato'], preferences({ dislikes: ['', '   '] }))).toEqual([]);
+    expect(findForbiddenIngredients(['tomato'], preferences({ dislikes: ['', '   '] }))).toEqual(
+      [],
+    );
   });
 });
 
 describe('findMissingIngredients', () => {
   it('returns what the pantry does not have', () => {
-    expect(findMissingIngredients(['tomato', 'pasta'], ['Tomato'], preferences())).toEqual(['pasta']);
+    expect(findMissingIngredients(['tomato', 'pasta'], ['Tomato'], preferences())).toEqual([
+      'pasta',
+    ]);
   });
 
   it('treats enabled staples as available', () => {
@@ -90,7 +92,9 @@ describe('scaleRecipe', () => {
 
   it('rounds to something a kitchen can act on', () => {
     const scaled = scaleRecipe(
-      recipe({ ingredients: [{ name: 'x', quantity: { amount: 100, unit: 'g' }, optional: false }] }),
+      recipe({
+        ingredients: [{ name: 'x', quantity: { amount: 100, unit: 'g' }, optional: false }],
+      }),
       3,
     );
 

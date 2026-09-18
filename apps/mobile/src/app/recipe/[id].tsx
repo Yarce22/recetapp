@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import type { RecipeDto } from '@recetapp/contracts';
@@ -37,23 +37,34 @@ export default function RecipeDetailScreen() {
     [deviceId],
   );
 
-  const load = useCallback(
-    async (wanted?: number) => {
-      if (!service || !title) return;
+  useEffect(() => {
+    if (!service || !title) return;
 
-      setLoading(true);
-      setError(null);
+    // Guards against a race the servings stepper makes easy to hit: tapping +
+    // twice starts two requests, and without this the slower one can land last
+    // and overwrite the newer recipe.
+    let cancelled = false;
+
+    // Deliberate: this render IS the spinner. The rule exists to catch
+    // cascading renders that achieve nothing, and this one is the feedback.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+
+    void (async () => {
       try {
         const result = await service.recipe({
           id,
           title,
           pantry: entries,
           preferences,
-          servings: wanted,
+          servings,
         });
+        if (cancelled) return;
         setRecipe(result.recipe);
         setMissing(result.missingIngredients);
+        setError(null);
       } catch (cause) {
+        if (cancelled) return;
         if (cause instanceof RecipeRejectedError) {
           const named = cause.ingredients.length > 0 ? `: ${cause.ingredients.join(', ')}` : '.';
           setError(`This recipe uses something you asked to avoid${named}`);
@@ -66,16 +77,16 @@ export default function RecipeDetailScreen() {
           setError('Something went wrong writing that recipe.');
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    },
-    [service, id, title, entries, preferences],
-  );
+    })();
 
-  useEffect(() => {
-    void load(servings);
-    // Reloading on every pantry keystroke would be wasteful; the recipe is
-    // fetched for the id, the title and the chosen servings.
+    return () => {
+      cancelled = true;
+    };
+    // The pantry and the preferences are read when the request is made rather
+    // than watched: refetching a recipe because the user edited an unrelated
+    // pantry item would waste a model call and reset their servings choice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [service, id, title, servings]);
 

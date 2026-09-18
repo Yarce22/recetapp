@@ -12,7 +12,12 @@ export type ChipGroupProps<T extends string> = {
 };
 
 /** Single-choice selector rendered as a row of chips. */
-export function ChipGroup<T extends string>({ label, options, value, onChange }: ChipGroupProps<T>) {
+export function ChipGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: ChipGroupProps<T>) {
   const theme = useTheme();
 
   return (
@@ -34,7 +39,8 @@ export function ChipGroup<T extends string>({ label, options, value, onChange }:
                 {
                   backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement,
                 },
-              ]}>
+              ]}
+            >
               <ThemedText type="small">{option}</ThemedText>
             </Pressable>
           );

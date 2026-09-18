@@ -8,7 +8,12 @@ import { PantryList } from '@/features/pantry/ui/pantry-list';
 
 function entry(name: string, amount: number, threshold: number | null): PantryEntry {
   return {
-    ingredient: createIngredient({ id: name.toLowerCase(), name, category: 'other', defaultUnit: 'g' }),
+    ingredient: createIngredient({
+      id: name.toLowerCase(),
+      name,
+      category: 'other',
+      defaultUnit: 'g',
+    }),
     item: createPantryItem({
       ingredientId: name.toLowerCase(),
       quantity: makeQuantity(amount, 'g'),

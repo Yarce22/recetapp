@@ -23,7 +23,9 @@ export type EnforceSuggestionModeResult = {
  * title, and has to be able to tell that they refer to the same dish.
  */
 export function suggestionIdFor(title: string): string {
-  return normalizeIngredientName(title).replace(/[^a-z0-9ñ]+/g, '-').replace(/^-|-$/g, '');
+  return normalizeIngredientName(title)
+    .replace(/[^a-z0-9ñ]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 /**

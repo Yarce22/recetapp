@@ -103,7 +103,10 @@ export function createHttpRecipeSuggestionService(
       }
 
       const candidate = payload as Partial<SuggestionsResponse>;
-      if (!Array.isArray(candidate.suggestions) || !candidate.suggestions.every(looksLikeSuggestion)) {
+      if (
+        !Array.isArray(candidate.suggestions) ||
+        !candidate.suggestions.every(looksLikeSuggestion)
+      ) {
         throw new SuggestionServiceError('The response was not in the expected shape.');
       }
 

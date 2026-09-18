@@ -83,11 +83,11 @@ These are deferred on purpose, not forgotten:
 
 ## Known risks
 
-| Risk | Mitigation |
-| --- | --- |
-| Model invents impossible quantities | Range checks and schema validation at the BFF |
+| Risk                                           | Mitigation                                                                       |
+| ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| Model invents impossible quantities            | Range checks and schema validation at the BFF                                    |
 | Model ignores strict mode and adds ingredients | `EnforceSuggestionMode` filters server-side; the prompt is never the enforcement |
-| Strict mode returns almost nothing | Staples list, one tightened retry, honest empty state |
-| Gemini cost grows with usage | Per-device rate limit, global quota, cache repeated pantry sets |
-| Ingredient name matching is fuzzy | Normalize on write, keep matching a testable domain service |
-| No accounts weakens abuse control | Accepted for MVP; revisit if quota abuse appears |
+| Strict mode returns almost nothing             | Staples list, one tightened retry, honest empty state                            |
+| Gemini cost grows with usage                   | Per-device rate limit, global quota, cache repeated pantry sets                  |
+| Ingredient name matching is fuzzy              | Normalize on write, keep matching a testable domain service                      |
+| No accounts weakens abuse control              | Accepted for MVP; revisit if quota abuse appears                                 |

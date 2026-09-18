@@ -55,12 +55,12 @@ Clean / Hexagonal, with folders that name the domain rather than the framework
 
 The dependency rule: source code dependencies point inward only.
 
-| Layer | Contains | May import |
-| --- | --- | --- |
-| `domain` | Entities, value objects, port interfaces, domain rules | Nothing outside itself |
-| `application` | Use cases orchestrating the domain | `domain` |
-| `infrastructure` | Port implementations: SQLite, HTTP, notifications | `domain`, `application` |
-| `ui` | Screens, components, hooks | `application`, `domain` |
+| Layer            | Contains                                               | May import              |
+| ---------------- | ------------------------------------------------------ | ----------------------- |
+| `domain`         | Entities, value objects, port interfaces, domain rules | Nothing outside itself  |
+| `application`    | Use cases orchestrating the domain                     | `domain`                |
+| `infrastructure` | Port implementations: SQLite, HTTP, notifications      | `domain`, `application` |
+| `ui`             | Screens, components, hooks                             | `application`, `domain` |
 
 `domain` must not import React, Expo, SQLite, or fetch. If it does, the
 boundary has already been broken.
@@ -70,12 +70,12 @@ boundary has already been broken.
 Ports are interfaces declared in `domain`. Adapters implement them in
 `infrastructure`. Use cases depend on the port, never on the adapter.
 
-| Port | MVP adapter | Swappable to |
-| --- | --- | --- |
-| `PantryRepository` | SQLite (`expo-sqlite`) | Remote sync adapter |
-| `RecipeSuggestionService` | HTTP call to our BFF | Direct SDK, or a different model |
-| `MealPlanRepository` | SQLite | Remote sync adapter |
-| `NotificationScheduler` | `expo-notifications` | Any push provider |
+| Port                      | MVP adapter            | Swappable to                     |
+| ------------------------- | ---------------------- | -------------------------------- |
+| `PantryRepository`        | SQLite (`expo-sqlite`) | Remote sync adapter              |
+| `RecipeSuggestionService` | HTTP call to our BFF   | Direct SDK, or a different model |
+| `MealPlanRepository`      | SQLite                 | Remote sync adapter              |
+| `NotificationScheduler`   | `expo-notifications`   | Any push provider                |
 
 This is what makes the key decision in section 1 reversible in practice: the
 app talks to `RecipeSuggestionService`, not to Gemini.
@@ -127,11 +127,11 @@ apps/api/src/
 
 Endpoints:
 
-| Method | Path | Purpose |
-| --- | --- | --- |
+| Method | Path           | Purpose                                                   |
+| ------ | -------------- | --------------------------------------------------------- |
 | `POST` | `/suggestions` | Pantry contents plus preferences in, compliant dishes out |
-| `POST` | `/recipes/:id` | Full recipe for a chosen dish |
-| `POST` | `/meal-plan` | Weekly menu proposal from pantry and preferences |
+| `POST` | `/recipes/:id` | Full recipe for a chosen dish                             |
+| `POST` | `/meal-plan`   | Weekly menu proposal from pantry and preferences          |
 
 Model output is validated against a schema at the BFF boundary before it is
 returned. An LLM response is untrusted input: it is parsed and checked, never
@@ -159,11 +159,11 @@ to the app.
 
 Consequences that have to be designed for, not discovered later:
 
-| Situation | Handling |
-| --- | --- |
-| Strict filtering leaves too few dishes | Retry once with a tightened prompt, then return what survived with an honest empty state |
-| Model returns a dish with an unregistered staple | Kept if the staple is enabled, dropped otherwise |
-| Model ignores a dietary restriction or dislike | Dropped unconditionally - allergies are never left to the model |
+| Situation                                        | Handling                                                                                 |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Strict filtering leaves too few dishes           | Retry once with a tightened prompt, then return what survived with an honest empty state |
+| Model returns a dish with an unregistered staple | Kept if the staple is enabled, dropped otherwise                                         |
+| Model ignores a dietary restriction or dislike   | Dropped unconditionally - allergies are never left to the model                          |
 
 Filtering runs on the BFF rather than on the device for two reasons: a rejected
 suggestion should not consume the user's bandwidth or battery, and a retry can

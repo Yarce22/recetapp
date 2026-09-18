@@ -50,7 +50,8 @@ function SuggestionCard({
     <Pressable
       accessibilityRole="button"
       onPress={() => onSelect(suggestion)}
-      style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+      style={[styles.card, { backgroundColor: theme.backgroundElement }]}
+    >
       <ThemedText type="smallBold">{suggestion.title}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {suggestion.summary}

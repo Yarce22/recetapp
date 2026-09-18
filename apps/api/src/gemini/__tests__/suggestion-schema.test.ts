@@ -38,7 +38,9 @@ describe('parseModelSuggestions', () => {
   it('rejects an empty title', () => {
     expect(() =>
       parseModelSuggestions({
-        suggestions: [{ title: '   ', summary: 'x', ingredients: [{ name: 'a', optional: false }] }],
+        suggestions: [
+          { title: '   ', summary: 'x', ingredients: [{ name: 'a', optional: false }] },
+        ],
       }),
     ).toThrow(MalformedModelResponseError);
   });

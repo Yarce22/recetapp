@@ -35,19 +35,19 @@ export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: R
             accessibilityLabel="Fewer servings"
             // Below one serving there is no recipe left to scale.
             onPress={() => recipe.servings > 1 && onServingsChange(recipe.servings - 1)}
-            style={[styles.stepperButton, { backgroundColor: theme.backgroundElement }]}>
+            style={[styles.stepperButton, { backgroundColor: theme.backgroundElement }]}
+          >
             <ThemedText type="smallBold">-</ThemedText>
           </Pressable>
-          <ThemedText
-            type="smallBold"
-            accessibilityLabel={`${recipe.servings} servings`}>
+          <ThemedText type="smallBold" accessibilityLabel={`${recipe.servings} servings`}>
             {recipe.servings}
           </ThemedText>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="More servings"
             onPress={() => onServingsChange(recipe.servings + 1)}
-            style={[styles.stepperButton, { backgroundColor: theme.backgroundElement }]}>
+            style={[styles.stepperButton, { backgroundColor: theme.backgroundElement }]}
+          >
             <ThemedText type="smallBold">+</ThemedText>
           </Pressable>
         </View>

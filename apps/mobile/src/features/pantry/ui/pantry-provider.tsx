@@ -43,9 +43,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
 
     // Each use case awaits the connection itself, so the provider can render
     // before the database has finished opening.
-    const withRepository = <A, R>(
-      make: (repo: PantryRepository) => (arg: A) => Promise<R>,
-    ) => {
+    const withRepository = <A, R>(make: (repo: PantryRepository) => (arg: A) => Promise<R>) => {
       return async (arg: A): Promise<R> => make(await repositoryPromise)(arg);
     };
 
@@ -59,8 +57,12 @@ export function PantryProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
+      // Both updates happen after the await. Clearing the error first would
+      // run synchronously when the mount effect calls this, costing an extra
+      // render before there is anything new to show.
+      const next = await useCases.list();
+      setEntries(next);
       setError(null);
-      setEntries(await useCases.list());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not read the pantry.');
     } finally {
@@ -69,8 +71,31 @@ export function PantryProvider({ children }: { children: ReactNode }) {
   }, [useCases]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    // The initial load runs inline rather than through refresh() so the state
+    // updates are visibly behind an await, and so it can be cancelled: without
+    // the guard, unmounting mid-read would set state on a gone component.
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const next = await useCases.list();
+        if (!cancelled) {
+          setEntries(next);
+          setError(null);
+        }
+      } catch (cause) {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : 'Could not read the pantry.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [useCases]);
 
   const value = useMemo<PantryContextValue>(
     () => ({

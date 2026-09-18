@@ -1,4 +1,8 @@
-import { normalizeIngredientName, type PreferencesDto, type SuggestionMode } from '@recetapp/contracts';
+import {
+  normalizeIngredientName,
+  type PreferencesDto,
+  type SuggestionMode,
+} from '@recetapp/contracts';
 
 export type { PreferencesDto, SuggestionMode };
 

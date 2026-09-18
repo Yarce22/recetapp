@@ -20,7 +20,8 @@ export default function PantryScreen() {
           accessibilityRole="button"
           accessibilityLabel="Add to pantry"
           onPress={() => router.push('/pantry/add')}
-          style={[styles.add, { backgroundColor: theme.backgroundSelected }]}>
+          style={[styles.add, { backgroundColor: theme.backgroundSelected }]}
+        >
           <ThemedText type="smallBold">Add</ThemedText>
         </Pressable>
       </View>
