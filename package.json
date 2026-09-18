@@ -27,5 +27,10 @@
     "eslint-plugin-prettier": "^5.5.6",
     "prettier": "^3.9.8",
     "typescript-eslint": "^8.70.0"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "^11.1.1"
+    }
   }
 }

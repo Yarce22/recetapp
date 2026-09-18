@@ -34,6 +34,7 @@ recetapp/
 - [Architecture](docs/ARCHITECTURE.md) - layers, boundaries, and why the API key lives server-side
 - [Domain model](docs/DOMAIN.md) - entities, use cases, and ports
 - [Roadmap](docs/ROADMAP.md) - delivery phases
+- [Security notes](docs/SECURITY.md) - dependency advisories and why the open one cannot be fixed here
 
 ## Working locally
 
