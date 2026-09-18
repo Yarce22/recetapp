@@ -60,7 +60,8 @@
       "src/features/**/application/**/*.ts"
     ],
     "moduleNameMapper": {
-      "\\.(css|sass|scss)$": "<rootDir>/__mocks__/style-mock.js"
+      "\\.(css|sass|scss)$": "<rootDir>/__mocks__/style-mock.js",
+      "^@recetapp/contracts$": "<rootDir>/../../packages/contracts/src/index.ts"
     }
   }
 }

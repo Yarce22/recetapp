@@ -1,86 +1,14 @@
 /**
- * Contracts shared by the mobile app and the BFF.
+ * Shared kernel for RecetApp.
  *
- * One definition of every request and response, so a backend change that
- * breaks the app fails at compile time instead of at runtime on a phone.
+ * Holds the request and response types exchanged between the mobile app and
+ * the BFF, plus the two pure rules both sides must agree on: how an ingredient
+ * name is normalized for matching, and how a suggestion mode is enforced.
+ *
+ * Those rules live here rather than on one side because disagreement between
+ * them would not surface as an error - it would surface as wrong answers.
  */
 
-export type Unit =
-  | 'g'
-  | 'kg'
-  | 'ml'
-  | 'l'
-  | 'unit'
-  | 'tbsp'
-  | 'tsp'
-  | 'cup'
-  | 'pinch';
-
-export type Quantity = {
-  amount: number;
-  unit: Unit;
-};
-
-/**
- * How much freedom the model has when proposing dishes.
- *
- * `strict`   - only ingredients in the pantry, plus the enabled staples
- * `flexible` - may introduce ingredients the user would have to buy
- *
- * Note this is a request-side intent only. It is enforced server-side after
- * the model responds; see EnforceSuggestionMode in docs/DOMAIN.md.
- */
-export type SuggestionMode = 'strict' | 'flexible';
-
-export type PantryEntryDto = {
-  name: string;
-  quantity: Quantity;
-};
-
-export type PreferencesDto = {
-  suggestionMode: SuggestionMode;
-  /** Only meaningful when suggestionMode is 'flexible'. */
-  maxMissingIngredients: number;
-  /** Basics assumed to be available, so strict mode stays usable. */
-  staples: string[];
-  dietary: string[];
-  dislikes: string[];
-};
-
-export type RecipeIngredientDto = {
-  name: string;
-  quantity: Quantity;
-  optional: boolean;
-};
-
-export type DishSuggestionDto = {
-  id: string;
-  title: string;
-  summary: string;
-  matchedIngredients: string[];
-  missingIngredients: string[];
-  /** Fraction of required ingredients already in the pantry, 0 to 1. */
-  coverage: number;
-  mode: SuggestionMode;
-};
-
-export type SuggestionsRequest = {
-  pantry: PantryEntryDto[];
-  preferences: PreferencesDto;
-};
-
-export type SuggestionsResponse = {
-  suggestions: DishSuggestionDto[];
-  /** How many the mode filter removed. Surfaced so the UI can be honest. */
-  filteredOut: number;
-};
-
-export type RecipeDto = {
-  id: string;
-  title: string;
-  servings: number;
-  ingredients: RecipeIngredientDto[];
-  steps: string[];
-  timeMinutes: number;
-  difficulty: 'easy' | 'medium' | 'hard';
-};
+export * from './types';
+export * from './normalize';
+export * from './enforce-suggestion-mode';
