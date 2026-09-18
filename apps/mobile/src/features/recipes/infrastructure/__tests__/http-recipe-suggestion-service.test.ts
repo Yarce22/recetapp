@@ -1,5 +1,6 @@
 import {
   RateLimitedError,
+  RecipeRejectedError,
   SuggestionServiceError,
 } from '@/features/recipes/domain/recipe-suggestion-service';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
@@ -124,5 +125,97 @@ describe('http recipe suggestion service', () => {
     await expect(service.suggest(pantry, DEFAULT_PREFERENCES)).rejects.toThrow(
       SuggestionServiceError,
     );
+  });
+});
+
+const recipePayload = {
+  recipe: {
+    id: 'tomato-salad',
+    title: 'Tomato salad',
+    servings: 2,
+    ingredients: [{ name: 'tomato', quantity: { amount: 400, unit: 'g' }, optional: false }],
+    steps: ['Chop.', 'Serve.'],
+    timeMinutes: 10,
+    difficulty: 'easy',
+  },
+  missingIngredients: ['basil'],
+};
+
+const recipeInput = {
+  id: 'tomato-salad',
+  title: 'Tomato salad',
+  pantry,
+  preferences: DEFAULT_PREFERENCES,
+};
+
+describe('http recipe suggestion service - recipe', () => {
+  it('posts to the id path and carries the title, since the server keeps no state', async () => {
+    let seen: { url: string; init: RequestInit } | null = null;
+    const service = setup(async (url, init) => {
+      seen = { url: String(url), init: init ?? {} };
+      return jsonResponse(recipePayload);
+    });
+
+    await service.recipe(recipeInput);
+
+    expect(seen!.url).toBe('http://localhost:8787/recipes/tomato-salad');
+    expect(JSON.parse(String(seen!.init.body)).title).toBe('Tomato salad');
+  });
+
+  it('omits servings entirely when none was asked for', async () => {
+    let body: Record<string, unknown> = {};
+    const service = setup(async (_url, init) => {
+      body = JSON.parse(String(init?.body));
+      return jsonResponse(recipePayload);
+    });
+
+    await service.recipe(recipeInput);
+
+    expect('servings' in body).toBe(false);
+  });
+
+  it('sends the servings when one was asked for', async () => {
+    let body: Record<string, unknown> = {};
+    const service = setup(async (_url, init) => {
+      body = JSON.parse(String(init?.body));
+      return jsonResponse(recipePayload);
+    });
+
+    await service.recipe({ ...recipeInput, servings: 4 });
+
+    expect(body.servings).toBe(4);
+  });
+
+  it('returns the recipe and what the pantry cannot cover', async () => {
+    const service = setup(async () => jsonResponse(recipePayload));
+
+    const result = await service.recipe(recipeInput);
+
+    expect(result.recipe.title).toBe('Tomato salad');
+    expect(result.missingIngredients).toEqual(['basil']);
+  });
+
+  it('raises a distinct error when the recipe was withheld over a dietary rule', async () => {
+    const service = setup(async () =>
+      jsonResponse({ error: 'recipe_violates_preferences', ingredients: ['peanut oil'] }, 422),
+    );
+
+    await expect(service.recipe(recipeInput)).rejects.toThrow(RecipeRejectedError);
+  });
+
+  it('carries which ingredients caused the rejection, so the user is told why', async () => {
+    const service = setup(async () =>
+      jsonResponse({ error: 'recipe_violates_preferences', ingredients: ['peanut oil'] }, 422),
+    );
+
+    await expect(service.recipe(recipeInput)).rejects.toMatchObject({
+      ingredients: ['peanut oil'],
+    });
+  });
+
+  it('raises a service error when the body is not a recipe', async () => {
+    const service = setup(async () => jsonResponse({ recipe: { title: 'x' } }));
+
+    await expect(service.recipe(recipeInput)).rejects.toThrow(SuggestionServiceError);
   });
 });

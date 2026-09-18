@@ -150,7 +150,14 @@ export default function DiscoverScreen() {
           suggestions={suggestions}
           filteredOut={filteredOut}
           mode={preferences.suggestionMode}
-          onSelect={(suggestion) => router.push(`/recipe/${suggestion.id}`)}
+          onSelect={(suggestion) =>
+            // The title travels with the id: the backend is stateless and
+            // cannot look up what the id referred to.
+            router.push({
+              pathname: '/recipe/[id]',
+              params: { id: suggestion.id, title: suggestion.title },
+            })
+          }
         />
       ) : null}
     </ThemedView>

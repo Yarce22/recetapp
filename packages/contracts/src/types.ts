@@ -94,3 +94,24 @@ export type RecipeDto = {
   timeMinutes: number;
   difficulty: 'easy' | 'medium' | 'hard';
 };
+
+/**
+ * Request for the full recipe of a dish.
+ *
+ * Carries the title, the pantry and the preferences because the BFF is
+ * stateless: it has no record of which suggestion an id referred to, and the
+ * dietary rules have to be enforced again on the complete ingredient list.
+ */
+export type RecipeRequest = {
+  title: string;
+  pantry: PantryEntryDto[];
+  preferences: PreferencesDto;
+  /** Defaults to whatever the recipe itself proposes. */
+  servings?: number;
+};
+
+export type RecipeResponse = {
+  recipe: RecipeDto;
+  /** What the pantry cannot cover, recomputed server-side. */
+  missingIngredients: string[];
+};

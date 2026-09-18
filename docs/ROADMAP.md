@@ -44,7 +44,7 @@ The mode filter is written test-first with fixtures of deliberately
 non-compliant model responses. It is the only thing standing between the
 feature and a model that improvises ingredients.
 
-## Phase 3 - Recipe detail
+## Phase 3 - Recipe detail [done]
 
 - `POST /recipes/:id` returning full steps and quantities
 - Recipe screen showing ingredients, steps, and what you are missing

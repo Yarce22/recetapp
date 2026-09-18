@@ -1,4 +1,5 @@
 import { normalizeIngredientName } from './normalize.ts';
+import { findForbiddenIngredients } from './recipe-rules.ts';
 import type { DishSuggestionDto, PreferencesDto, RawDishSuggestion } from './types.ts';
 
 export type EnforceSuggestionModeInput = {
@@ -15,8 +16,13 @@ export type EnforceSuggestionModeResult = {
   filteredOut: number;
 };
 
-/** Stable, readable id derived from the dish title. */
-function idFor(title: string): string {
+/**
+ * Stable, readable id derived from the dish title.
+ *
+ * Exported because the recipe endpoint is stateless: it receives an id and a
+ * title, and has to be able to tell that they refer to the same dish.
+ */
+export function suggestionIdFor(title: string): string {
   return normalizeIngredientName(title).replace(/[^a-z0-9ñ]+/g, '-').replace(/^-|-$/g, '');
 }
 
@@ -41,8 +47,6 @@ export function enforceSuggestionMode(
     ...input.pantry.map(normalizeIngredientName),
     ...preferences.staples.map(normalizeIngredientName),
   ]);
-  const dislikes = preferences.dislikes.map(normalizeIngredientName).filter((d) => d.length > 0);
-
   const kept: DishSuggestionDto[] = [];
   let filteredOut = 0;
 
@@ -54,14 +58,14 @@ export function enforceSuggestionMode(
       continue;
     }
 
-    // Dislikes are matched as substrings, so avoiding "peanut" also rejects
-    // "peanut butter". Optional ingredients are checked too: an allergy does
-    // not become safe because the model called the ingredient optional.
-    const offends = suggestion.ingredients.some((ingredient) => {
-      const name = normalizeIngredientName(ingredient.name);
-      return dislikes.some((disliked) => name.includes(disliked));
-    });
-    if (offends) {
+    // Optional ingredients are checked too: an allergy does not become safe
+    // because the model called the ingredient optional. The rule itself lives
+    // in recipe-rules, so suggestions and full recipes cannot drift apart.
+    const forbidden = findForbiddenIngredients(
+      suggestion.ingredients.map((ingredient) => ingredient.name),
+      preferences,
+    );
+    if (forbidden.length > 0) {
       filteredOut += 1;
       continue;
     }
@@ -87,7 +91,7 @@ export function enforceSuggestionMode(
     }
 
     kept.push({
-      id: idFor(suggestion.title),
+      id: suggestionIdFor(suggestion.title),
       title: suggestion.title,
       summary: suggestion.summary,
       matchedIngredients: matched.map((ingredient) => ingredient.name),

@@ -78,5 +78,5 @@ behind that same function, and no feature code changes.
 
 ## Status
 
-Phases 0 to 2 complete: pantry storage, the Gemini-backed BFF, and the
-Discover screen with strict and flexible suggestions. See [the roadmap](docs/ROADMAP.md) for what comes next.
+Phases 0 to 3 complete: pantry storage, the Gemini-backed BFF, Discover with
+strict and flexible suggestions, and full recipes that scale by servings. See [the roadmap](docs/ROADMAP.md) for what comes next.

@@ -20,14 +20,23 @@ const body = (overrides: Record<string, unknown> = {}) =>
     ...overrides,
   });
 
-function setup(engine: SuggestionEngine, limits = { perDevicePerHour: 10, globalPerHour: 100 }) {
+const NOT_USED_HERE = {
+  recipe: async () => {
+    throw new Error('the recipe endpoint has its own test');
+  },
+};
+
+function setup(
+  engine: Partial<SuggestionEngine>,
+  limits = { perDevicePerHour: 10, globalPerHour: 100 },
+) {
   return createApp({
-    engine,
+    engine: { ...NOT_USED_HERE, ...engine } as SuggestionEngine,
     limiter: createRateLimiter({ ...limits, now: () => 0 }),
   });
 }
 
-const engineReturning = (suggestions: RawDishSuggestion[]): SuggestionEngine => ({
+const engineReturning = (suggestions: RawDishSuggestion[]): Partial<SuggestionEngine> => ({
   suggest: async () => suggestions,
 });
 
