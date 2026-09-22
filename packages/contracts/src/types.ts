@@ -126,6 +126,19 @@ export type MealPlanEntryDto = {
   dishId: string;
   dishTitle: string;
   summary: string;
+  /**
+   * Ingredient names the dish needs, as the model listed them when the week
+   * was planned.
+   *
+   * Kept on the entry so the shopping list is a local computation. Deriving it
+   * from the recipes instead would mean fetching every recipe in the week -
+   * seven model calls to answer a question we already had the data for.
+   *
+   * These are the suggestion-level ingredients, which can differ in detail
+   * from the full recipe. Good enough to shop from, not a substitute for
+   * opening the recipe.
+   */
+  ingredients: string[];
 };
 
 export type MealPlanDto = {

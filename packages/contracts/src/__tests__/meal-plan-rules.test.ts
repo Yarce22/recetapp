@@ -172,6 +172,18 @@ describe('buildMealPlan', () => {
     expect(result.entries[0].dishId).toBe('tomato-salad');
   });
 
+  it('carries the ingredients, so the shopping list needs no extra model call', () => {
+    const result = buildMealPlan({
+      proposals: [dish('Pasta', ['tomato', 'pasta'])],
+      slots: [slots[0]],
+      exclude: [],
+      pantry: ['tomato'],
+      preferences: preferences(),
+    });
+
+    expect([...result.entries[0].ingredients].sort()).toEqual(['pasta', 'tomato']);
+  });
+
   it('returns nothing rather than guessing when the model proposed nothing usable', () => {
     const result = buildMealPlan({
       proposals: [],

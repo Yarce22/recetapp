@@ -57,7 +57,7 @@ feature and a model that improvises ingredients.
 - Weekly grid, assign and clear slots
 - Regenerate a single day without losing the rest
 
-## Phase 5 - Low stock and shopping list
+## Phase 5 - Low stock and shopping list [done]
 
 - `lowStockThreshold` per pantry item
 - `ListLowStockItems` and `BuildShoppingList`

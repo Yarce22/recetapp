@@ -136,6 +136,9 @@ export function buildMealPlan(input: BuildMealPlanInput): BuildMealPlanResult {
       dishId: suggestionIdFor(suggestion.title),
       dishTitle: suggestion.title,
       summary: suggestion.summary,
+      // Already known here. Throwing it away would cost a model call per dish
+      // later, when the shopping list asks what the week needs.
+      ingredients: [...suggestion.matchedIngredients, ...suggestion.missingIngredients],
     });
   }
 

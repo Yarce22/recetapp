@@ -65,6 +65,18 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    version: 4,
+    statements: [
+      // The ingredients each planned dish needs, as a JSON array of names.
+      // Stored so the shopping list is a local computation instead of one
+      // model call per dish in the week.
+      //
+      // Added as a separate migration rather than edited into version 3:
+      // installs that already ran 3 would never see the column otherwise.
+      `ALTER TABLE meal_plan_entries ADD COLUMN ingredients TEXT NOT NULL DEFAULT '[]'`,
+    ],
+  },
 ];
 
 /**

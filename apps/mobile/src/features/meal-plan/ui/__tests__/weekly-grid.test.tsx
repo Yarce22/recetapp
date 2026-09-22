@@ -12,6 +12,7 @@ const entry = (date: string, title: string): MealPlanEntryDto => ({
   dishId: title.toLowerCase().replace(/\s+/g, '-'),
   dishTitle: title,
   summary: `A dish called ${title}`,
+  ingredients: ['tomato'],
 });
 
 function renderGrid(props: Partial<React.ComponentProps<typeof WeeklyGrid>> = {}) {
