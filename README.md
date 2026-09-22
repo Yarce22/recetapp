@@ -85,5 +85,6 @@ behind that same function, and no feature code changes.
 
 ## Status
 
-Phases 0 to 3 complete: pantry storage, the Gemini-backed BFF, Discover with
-strict and flexible suggestions, and full recipes that scale by servings. See [the roadmap](docs/ROADMAP.md) for what comes next.
+Phases 0 to 4 complete: pantry storage, the Gemini-backed BFF, Discover with
+strict and flexible suggestions, full recipes that scale by servings, and a
+weekly menu that never repeats a dish. See [the roadmap](docs/ROADMAP.md) for what comes next.

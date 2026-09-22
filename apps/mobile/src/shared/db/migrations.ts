@@ -49,6 +49,22 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    version: 3,
+    statements: [
+      // One row per day and meal. The date is stored as YYYY-MM-DD text
+      // rather than an instant: "Tuesday's dinner" is a calendar fact, and a
+      // timestamp would shift it across timezones.
+      `CREATE TABLE IF NOT EXISTS meal_plan_entries (
+        date       TEXT NOT NULL,
+        slot       TEXT NOT NULL,
+        dish_id    TEXT NOT NULL,
+        dish_title TEXT NOT NULL,
+        summary    TEXT NOT NULL,
+        PRIMARY KEY (date, slot)
+      )`,
+    ],
+  },
 ];
 
 /**

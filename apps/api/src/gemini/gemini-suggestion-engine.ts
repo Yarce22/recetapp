@@ -50,6 +50,29 @@ function buildRecipePrompt(title: string, pantry: string[], preferences: Prefere
   ].join('\n');
 }
 
+function buildWeekPrompt(pantry: string[], preferences: PreferencesDto, count: number): string {
+  const rules =
+    preferences.suggestionMode === 'strict'
+      ? 'Use ONLY ingredients from the pantry list and the staples list.'
+      : `You may introduce at most ${preferences.maxMissingIngredients} ingredients per dish that are not in the pantry.`;
+
+  return [
+    'You plan a week of meals for someone, using what they have at home.',
+    '',
+    `Pantry: ${JSON.stringify(pantry)}`,
+    `Staples always available: ${JSON.stringify(preferences.staples)}`,
+    `Dietary requirements: ${JSON.stringify(preferences.dietary)}`,
+    `Never use these ingredients: ${JSON.stringify(preferences.dislikes)}`,
+    '',
+    rules,
+    // More than the week needs, because the mode filter and the no-repeat
+    // rule both discard dishes before anything reaches a slot.
+    `Propose ${Math.min(12, count + 4)} DIFFERENT dishes. Vary the main ingredient and the cooking method; do not propose the same dish twice under different names.`,
+    'List every ingredient each dish needs, marking as optional only what can genuinely be left out.',
+    'Answer with JSON matching the required schema and nothing else.',
+  ].join('\n');
+}
+
 /**
  * Gemini adapter for the engine port.
  *
@@ -121,6 +144,14 @@ export function createGeminiSuggestionEngine(options: GeminiOptions): Suggestion
         GEMINI_RECIPE_SCHEMA,
       );
       return parseModelRecipe(parsed);
+    },
+
+    async planWeek({ pantry, preferences, count }): Promise<RawDishSuggestion[]> {
+      const parsed = await askForJson(
+        buildWeekPrompt(pantry, preferences, count),
+        GEMINI_RESPONSE_SCHEMA,
+      );
+      return parseModelSuggestions(parsed);
     },
   };
 }

@@ -115,3 +115,36 @@ export type RecipeResponse = {
   /** What the pantry cannot cover, recomputed server-side. */
   missingIngredients: string[];
 };
+
+/** Which meal of the day a plan entry belongs to. */
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner';
+
+export type MealPlanEntryDto = {
+  /** Calendar date as YYYY-MM-DD. A stored instant would shift across timezones. */
+  date: string;
+  slot: MealSlot;
+  dishId: string;
+  dishTitle: string;
+  summary: string;
+};
+
+export type MealPlanDto = {
+  /** The Monday of the week, as YYYY-MM-DD. */
+  weekStartDate: string;
+  entries: MealPlanEntryDto[];
+};
+
+export type MealPlanRequest = {
+  pantry: PantryEntryDto[];
+  preferences: PreferencesDto;
+  /** Day and slot pairs to fill. One day's worth when regenerating a day. */
+  slots: { date: string; slot: MealSlot }[];
+  /** Dish titles already in the week, so a regenerated day stays varied. */
+  exclude: string[];
+};
+
+export type MealPlanResponse = {
+  entries: MealPlanEntryDto[];
+  /** Slots the rules could not fill. Reported rather than padded with repeats. */
+  unfilled: { date: string; slot: MealSlot }[];
+};

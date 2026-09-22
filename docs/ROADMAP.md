@@ -50,7 +50,7 @@ feature and a model that improvises ingredients.
 - Recipe screen showing ingredients, steps, and what you are missing
 - Scale quantities by servings
 
-## Phase 4 - Weekly menu
+## Phase 4 - Weekly menu [done]
 
 - `MealPlan` domain and repository
 - `POST /meal-plan` for a proposed week, with variety rules

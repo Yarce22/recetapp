@@ -1,5 +1,6 @@
 import type {
   DishSuggestionDto,
+  MealPlanResponse,
   PreferencesDto,
   RecipeResponse,
   SuggestionsResponse,
@@ -11,6 +12,8 @@ import {
   RateLimitedError,
   RecipeRejectedError,
   SuggestionServiceError,
+  type MealPlanRequestInput,
+  type MealPlanResult,
   type RecipeRequestInput,
   type RecipeResult,
   type RecipeSuggestionService,
@@ -186,6 +189,58 @@ export function createHttpRecipeSuggestionService(
               (entry): entry is string => typeof entry === 'string',
             )
           : [],
+      };
+    },
+
+    async planWeek(input: MealPlanRequestInput): Promise<MealPlanResult> {
+      let response: Response;
+
+      try {
+        response = await doFetch(`${options.baseUrl}/meal-plan`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-device-id': options.deviceId,
+          },
+          body: JSON.stringify({
+            pantry: input.pantry.map((entry) => ({
+              name: entry.ingredient.displayName,
+              quantity: entry.item.quantity,
+            })),
+            preferences: input.preferences,
+            slots: input.slots,
+            exclude: input.exclude,
+          }),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+      } catch {
+        throw new SuggestionServiceError('Could not reach RecetApp. Check your connection.');
+      }
+
+      if (response.status === 429) {
+        const retryAfter = Number(response.headers.get('retry-after'));
+        throw new RateLimitedError(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 60);
+      }
+
+      if (!response.ok) {
+        throw new SuggestionServiceError('RecetApp could not plan your week right now.');
+      }
+
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new SuggestionServiceError('The response could not be read.');
+      }
+
+      const candidate = payload as Partial<MealPlanResponse>;
+      if (!Array.isArray(candidate.entries)) {
+        throw new SuggestionServiceError('The response was not in the expected shape.');
+      }
+
+      return {
+        entries: candidate.entries,
+        unfilled: Array.isArray(candidate.unfilled) ? candidate.unfilled : [],
       };
     },
   };

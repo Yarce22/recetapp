@@ -1,4 +1,10 @@
-import type { DishSuggestionDto, PreferencesDto, RecipeDto } from '@recetapp/contracts';
+import type {
+  DishSuggestionDto,
+  MealPlanEntryDto,
+  MealSlot,
+  PreferencesDto,
+  RecipeDto,
+} from '@recetapp/contracts';
 
 import type { PantryEntry } from '@/features/pantry/domain/pantry-repository';
 
@@ -23,6 +29,20 @@ export type RecipeRequestInput = {
   servings?: number;
 };
 
+export type MealPlanRequestInput = {
+  pantry: PantryEntry[];
+  preferences: PreferencesDto;
+  slots: { date: string; slot: MealSlot }[];
+  /** Dish titles already in the week, so a regenerated day stays varied. */
+  exclude: string[];
+};
+
+export type MealPlanResult = {
+  entries: MealPlanEntryDto[];
+  /** Slots the server could not fill without repeating a dish. */
+  unfilled: { date: string; slot: MealSlot }[];
+};
+
 /**
  * Port for whatever produces dish suggestions and recipes.
  *
@@ -33,6 +53,7 @@ export type RecipeRequestInput = {
 export interface RecipeSuggestionService {
   suggest(pantry: PantryEntry[], preferences: PreferencesDto): Promise<SuggestionResult>;
   recipe(input: RecipeRequestInput): Promise<RecipeResult>;
+  planWeek(input: MealPlanRequestInput): Promise<MealPlanResult>;
 }
 
 /** Anything that stopped us getting suggestions, with nothing internal leaked. */

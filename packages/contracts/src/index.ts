@@ -13,3 +13,4 @@ export * from './types.ts';
 export * from './normalize.ts';
 export * from './enforce-suggestion-mode.ts';
 export * from './recipe-rules.ts';
+export * from './meal-plan-rules.ts';

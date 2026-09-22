@@ -2,11 +2,13 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import {
+  buildMealPlan,
   enforceSuggestionMode,
   findForbiddenIngredients,
   findMissingIngredients,
   scaleRecipe,
   suggestionIdFor,
+  type MealPlanResponse,
   type PreferencesDto,
   type RawDishSuggestion,
   type RecipeDto,
@@ -31,6 +33,15 @@ export type SuggestionEngine = {
     pantry: string[];
     preferences: PreferencesDto;
   }): Promise<RecipeDto>;
+  /**
+   * Proposes dishes for a week. Separate from `suggest` because the ask is
+   * different: a varied set sized to the week, not the best matches.
+   */
+  planWeek(input: {
+    pantry: string[];
+    preferences: PreferencesDto;
+    count: number;
+  }): Promise<RawDishSuggestion[]>;
 };
 
 const quantitySchema = z.object({
@@ -62,6 +73,20 @@ const recipeRequestSchema = z.object({
   // Rejected here rather than in scaleRecipe, so a bad number is a bad
   // request instead of a server error.
   servings: z.number().int().positive().max(50).optional(),
+});
+
+// A calendar date, not an instant. See the meal plan rules in contracts.
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
+
+const mealPlanRequestSchema = z.object({
+  pantry: pantrySchema,
+  preferences: preferencesSchema,
+  // A week holds 7 days times 3 meals. More than that is not a week.
+  slots: z
+    .array(z.object({ date: isoDateSchema, slot: z.enum(['breakfast', 'lunch', 'dinner']) }))
+    .min(1)
+    .max(21),
+  exclude: z.array(z.string().max(200)).max(50).default([]),
 });
 
 /** Never leaks upstream detail: it can carry the key, the prompt, or the model's words. */
@@ -181,6 +206,56 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       recipe: scaled,
       missingIngredients: findMissingIngredients(ingredientNames, pantryNames, preferences),
     };
+    return c.json(payload);
+  });
+
+  app.post('/meal-plan', async (c) => {
+    const deviceId = c.req.header('x-device-id');
+    if (!deviceId) return c.json({ error: 'missing_device_id' }, 400);
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: 'invalid_json' }, 400);
+    }
+
+    const parsed = mealPlanRequestSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: 'invalid_request' }, 400);
+
+    const decision = deps.limiter.check(deviceId);
+    if (!decision.allowed) {
+      return c.json({ error: 'rate_limited', scope: decision.reason }, 429, {
+        'retry-after': String(decision.retryAfterSeconds ?? 60),
+      });
+    }
+
+    const { pantry, preferences, slots, exclude } = parsed.data;
+    const pantryNames = pantry.map((entry) => entry.name);
+
+    let proposals: RawDishSuggestion[];
+    try {
+      // Asking for exactly the number of slots is the floor, not the target:
+      // the mode filter and the no-repeat rule both remove dishes, so the
+      // engine is told the size of the week and expected to overshoot.
+      proposals = await deps.engine.planWeek({
+        pantry: pantryNames,
+        preferences,
+        count: slots.length,
+      });
+    } catch (cause) {
+      return c.json({ error: upstreamFailure(cause) }, 502);
+    }
+
+    const { entries, unfilled } = buildMealPlan({
+      proposals,
+      slots,
+      exclude,
+      pantry: pantryNames,
+      preferences,
+    });
+
+    const payload: MealPlanResponse = { entries, unfilled };
     return c.json(payload);
   });
 
