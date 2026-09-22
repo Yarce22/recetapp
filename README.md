@@ -35,6 +35,8 @@ recetapp/
 - [Domain model](docs/DOMAIN.md) - entities, use cases, and ports
 - [Roadmap](docs/ROADMAP.md) - delivery phases
 - [Security notes](docs/SECURITY.md) - dependency advisories and why the open one cannot be fixed here
+- [Releasing](docs/RELEASING.md) - build profiles, OTA updates and the store privacy disclosures
+- [Store listing](store/LISTING.md) - draft copy and what is still missing
 
 ## Working locally
 
@@ -85,7 +87,6 @@ behind that same function, and no feature code changes.
 
 ## Status
 
-Phases 0 to 5 complete: pantry storage, the Gemini-backed BFF, Discover with
-strict and flexible suggestions, full recipes that scale by servings, a weekly
-menu that never repeats a dish, and a shopping list built from what is running
-low plus what the week needs. See [the roadmap](docs/ROADMAP.md) for what comes next.
+All six roadmap phases are implemented. The app is not submitted: the icon is
+still Expo's default, the BFF is not deployed, and the store accounts and
+privacy policy are yours to create. See [Releasing](docs/RELEASING.md). See [the roadmap](docs/ROADMAP.md) for what comes next.

@@ -64,7 +64,7 @@ feature and a model that improvises ingredients.
 - `expo-notifications` for the low-stock alert
 - Shopping screen combining low stock and what the week's plan requires
 
-## Phase 6 - Ship
+## Phase 6 - Ship [configuration done]
 
 - App icon, splash, store metadata
 - EAS Build profiles for development, preview, production
