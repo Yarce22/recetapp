@@ -82,11 +82,17 @@ eas update --channel production --message "Fix the low-stock wording"
 This reaches installed apps in minutes without a store review. It only carries
 the JavaScript layer.
 
-`runtimeVersion` is set to the `fingerprint` policy, which changes whenever the
-native side does. That is the safety mechanism: an OTA update built against
-different native modules simply will not be offered to an older build, instead
-of being delivered and crashing on launch. Adding a native dependency means a
-new store build, not an update.
+`runtimeVersion` uses the `appVersion` policy: the runtime is the `version` in
+`app.json`. An update is only offered to builds with the same version, so
+**adding or changing a native dependency means bumping `version` and shipping a
+new build**, not an update. Otherwise the update reaches an older build that
+lacks the native code and crashes on launch.
+
+The `fingerprint` policy would enforce that automatically, but it failed here:
+the hash computed on Windows differs from the one EAS computes on Linux (config
+plugin dependencies and the generated `android` directory), and EAS aborts the
+build with "Runtime version calculated on local machine not equal to runtime
+version calculated during build".
 
 ## Privacy disclosures - do not skip this
 

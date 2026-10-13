@@ -46,7 +46,7 @@
       "reactCompiler": true
     },
     "runtimeVersion": {
-      "policy": "fingerprint"
+      "policy": "appVersion"
     },
     "extra": {
       "router": {},
