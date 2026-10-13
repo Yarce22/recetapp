@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 
 import { startOfWeek, type MealPlanEntryDto } from '@recetapp/contracts';
 
@@ -11,9 +12,11 @@ import { buildShoppingList } from '@/features/shopping-list/domain/build-shoppin
 import { planLowStockReminder } from '@/features/shopping-list/domain/plan-low-stock-reminder';
 import { createNotificationScheduler } from '@/features/shopping-list/infrastructure/expo-notification-scheduler';
 import { ShoppingListView } from '@/features/shopping-list/ui/shopping-list-view';
+import { Screen, ScreenHeader } from '@/shared/ui/controls';
+import { FadeIn, ProgressBar, Skeleton, useLoop } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { ThemedView } from '@/shared/ui/themed-view';
-import { Spacing } from '@/shared/ui/theme';
+import { Radius, Spacing } from '@/shared/ui/theme';
+import { useTheme } from '@/shared/ui/use-theme';
 
 /**
  * Today as a calendar date, built from the local parts.
@@ -28,6 +31,7 @@ function todayIsoDate(): string {
 }
 
 export default function ShoppingScreen() {
+  const theme = useTheme();
   const { entries: pantry, loading: pantryLoading } = usePantry();
   const { preferences } = usePreferences();
 
@@ -81,30 +85,94 @@ export default function ShoppingScreen() {
     });
   }
 
+  const done = items.filter((item) => checked.has(item.name)).length;
+
   return (
-    <ThemedView style={styles.screen}>
-      <ScrollView>
-        <View style={styles.header}>
-          <ThemedText type="title">Shopping</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            What is running low, plus what this week&apos;s menu needs.
-          </ThemedText>
-        </View>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ScreenHeader title="Shopping" />
 
         {loading || pantryLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator />
+          <View style={styles.skeletons}>
+            <Skeleton height={120} radius={Radius.xxl - 4} />
+            {[0, 1, 2, 3].map((index) => (
+              <Skeleton key={index} height={60} radius={Radius.lg} />
+            ))}
           </View>
         ) : (
-          <ShoppingListView items={items} checked={checked} onToggle={toggle} />
+          <>
+            {items.length > 0 ? (
+              <FadeIn style={styles.summaryWrap}>
+                <View style={[styles.summary, { backgroundColor: theme.sky }]}>
+                  <View style={styles.summaryText}>
+                    <ThemedText type="small" style={{ color: theme.skyInk }}>
+                      What is running low, plus what this week&apos;s menu needs.
+                    </ThemedText>
+                    <ThemedText type="heading">
+                      {done} of {items.length} in the cart
+                    </ThemedText>
+                    <ProgressBar
+                      value={items.length === 0 ? 0 : done / items.length}
+                      color={theme.blue}
+                      trackColor={theme.backgroundElement}
+                      height={10}
+                      accessibilityLabel="Items ticked off"
+                    />
+                  </View>
+                  <RollingCart />
+                </View>
+              </FadeIn>
+            ) : null}
+            <ShoppingListView items={items} checked={checked} onToggle={toggle} />
+          </>
         )}
       </ScrollView>
-    </ThemedView>
+    </Screen>
+  );
+}
+
+/** Cart that rolls back and forth beside the progress. Decorative. */
+function RollingCart() {
+  const theme = useTheme();
+  const roll = useLoop(1400, { yoyo: true });
+
+  return (
+    <Animated.View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        styles.cart,
+        { backgroundColor: theme.backgroundElement },
+        {
+          transform: [
+            { translateX: roll.interpolate({ inputRange: [0, 1], outputRange: [-4, 6] }) },
+            { rotate: roll.interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '4deg'] }) },
+          ],
+        },
+      ]}
+    >
+      <Ionicons name="cart" size={34} color={theme.skyInk} />
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  header: { padding: Spacing.three, gap: Spacing.one },
-  centered: { padding: Spacing.six, alignItems: 'center' },
+  scroll: { paddingBottom: Spacing.five },
+  skeletons: { paddingHorizontal: Spacing.four, gap: Spacing.two },
+  summaryWrap: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.three },
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: 20,
+    borderRadius: Radius.xxl - 4,
+  },
+  summaryText: { flex: 1, gap: Spacing.two },
+  cart: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

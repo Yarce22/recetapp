@@ -1,23 +1,70 @@
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 import { PantryProvider } from '@/features/pantry/ui/pantry-provider';
 import { PreferencesProvider } from '@/features/preferences/ui/preferences-provider';
+import { AppLoading } from '@/shared/ui/app-loading';
+import { Typeface } from '@/shared/ui/theme';
+import { useTheme } from '@/shared/ui/use-theme';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const theme = useTheme();
+
+  const [fontsLoaded, fontError] = useFonts({
+    [Typeface.display]: require('../../assets/fonts/Fredoka_600SemiBold.ttf'),
+    [Typeface.displayMedium]: require('../../assets/fonts/Fredoka_500Medium.ttf'),
+    [Typeface.body]: require('../../assets/fonts/NunitoSans_400Regular.ttf'),
+    [Typeface.bodySemiBold]: require('../../assets/fonts/NunitoSans_600SemiBold.ttf'),
+    [Typeface.bodyBold]: require('../../assets/fonts/NunitoSans_700Bold.ttf'),
+  });
+
+  // A font that fails to load should not lock the user out of the app; the
+  // system font is an acceptable fallback.
+  if (!fontsLoaded && !fontError) {
+    return <AppLoading message="Warming up the kitchen…" />;
+  }
+
+  const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: theme.accent,
+      background: theme.background,
+      card: theme.background,
+      text: theme.text,
+      border: theme.border,
+    },
+  };
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <PreferencesProvider>
         <PantryProvider>
-          <Stack>
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: theme.background },
+              headerShadowVisible: false,
+              headerTintColor: theme.text,
+              headerTitleStyle: { fontFamily: Typeface.display, fontSize: 20 },
+              contentStyle: { backgroundColor: theme.background },
+            }}
+          >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
               name="pantry/add"
               options={{ title: 'Add to pantry', presentation: 'modal' }}
             />
-            <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe' }} />
+            <Stack.Screen
+              name="recipe/[id]"
+              options={{
+                title: '',
+                headerStyle: { backgroundColor: theme.peach },
+                headerBackButtonDisplayMode: 'minimal',
+              }}
+            />
           </Stack>
         </PantryProvider>
       </PreferencesProvider>

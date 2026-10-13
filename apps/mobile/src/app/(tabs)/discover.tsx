@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import type { DishSuggestionDto, SuggestionMode } from '@recetapp/contracts';
 
@@ -13,9 +13,11 @@ import {
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
 import { SuggestionList } from '@/features/recipes/ui/suggestion-list';
 import { API_BASE_URL } from '@/shared/config/api';
+import { Button, Chip, Screen, ScreenHeader, SegmentedControl } from '@/shared/ui/controls';
+import { CookingLoader } from '@/shared/ui/cooking-loader';
+import { FadeIn, Skeleton, stagger } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { ThemedView } from '@/shared/ui/themed-view';
-import { Spacing } from '@/shared/ui/theme';
+import { Radius, Spacing } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
 export default function DiscoverScreen() {
@@ -60,95 +62,68 @@ export default function DiscoverScreen() {
   }, [service, entries, preferences]);
 
   const setMode = (mode: SuggestionMode) => update({ ...preferences, suggestionMode: mode });
+  const canAsk = !loading && ready && entries.length > 0;
 
-  return (
-    <ThemedView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.controls}>
-        <ThemedText type="title">Discover</ThemedText>
+  const controls = (
+    <View style={styles.controls}>
+      <SegmentedControl
+        options={MODES}
+        value={preferences.suggestionMode}
+        onChange={setMode}
+        tone="mint"
+      />
 
-        <View style={styles.modes}>
-          {(['strict', 'flexible'] as const).map((mode) => (
-            <Pressable
-              key={mode}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: preferences.suggestionMode === mode }}
-              onPress={() => setMode(mode)}
-              style={[
-                styles.mode,
-                {
-                  backgroundColor:
-                    preferences.suggestionMode === mode
-                      ? theme.backgroundSelected
-                      : theme.backgroundElement,
-                },
-              ]}
-            >
-              <ThemedText type="smallBold">
-                {mode === 'strict' ? 'Only what I have' : 'I can buy a little'}
-              </ThemedText>
-            </Pressable>
-          ))}
-        </View>
-
+      <View style={styles.staplesBlock}>
         <ThemedText type="small" themeColor="textSecondary">
           Staples assumed available. Tap to turn one off.
         </ThemedText>
         <View style={styles.staples}>
-          {['water', 'salt', 'pepper', 'cooking oil', 'sugar', 'flour'].map((staple) => {
-            const enabled = preferences.staples.includes(staple);
-            return (
-              <Pressable
-                key={staple}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: enabled }}
-                onPress={() => toggleStapleByName(staple)}
-                style={[
-                  styles.staple,
-                  {
-                    backgroundColor: enabled ? theme.backgroundSelected : theme.backgroundElement,
-                    opacity: enabled ? 1 : 0.5,
-                  },
-                ]}
-              >
-                <ThemedText type="small">{staple}</ThemedText>
-              </Pressable>
-            );
-          })}
+          {STAPLES.map((staple) => (
+            <Chip
+              key={staple}
+              label={staple}
+              tone="butter"
+              accessibilityRole="switch"
+              stateKey="checked"
+              selected={preferences.staples.includes(staple)}
+              onPress={() => toggleStapleByName(staple)}
+            />
+          ))}
         </View>
+      </View>
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={loading || !ready || entries.length === 0}
-          onPress={ask}
-          style={[
-            styles.ask,
-            {
-              backgroundColor: theme.backgroundSelected,
-              opacity: loading || entries.length === 0 ? 0.5 : 1,
-            },
-          ]}
-        >
-          <ThemedText type="smallBold">{loading ? 'Thinking...' : 'What can I cook?'}</ThemedText>
-        </Pressable>
+      <Button
+        label={loading ? 'Thinking...' : 'What can I cook?'}
+        icon="sparkles"
+        disabled={!canAsk}
+        onPress={ask}
+      />
 
-        {entries.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            Add something to your pantry first.
+      {entries.length === 0 ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          Add something to your pantry first.
+        </ThemedText>
+      ) : null}
+
+      {error ? (
+        <View style={[styles.error, { backgroundColor: theme.warning }]}>
+          <ThemedText type="small" style={{ color: theme.warningInk }}>
+            {error}
           </ThemedText>
-        ) : null}
-
-        {error ? <ThemedText type="small">{error}</ThemedText> : null}
-      </ScrollView>
-
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator />
         </View>
-      ) : asked ? (
+      ) : null}
+    </View>
+  );
+
+  if (asked && !loading) {
+    return (
+      <Screen>
+        <ScreenHeader title="Discover" />
         <SuggestionList
           suggestions={suggestions}
           filteredOut={filteredOut}
           mode={preferences.suggestionMode}
+          header={controls}
           onSelect={(suggestion) =>
             // The title travels with the id: the backend is stateless and
             // cannot look up what the id referred to.
@@ -158,22 +133,63 @@ export default function DiscoverScreen() {
             })
           }
         />
-      ) : null}
-    </ThemedView>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen>
+      <ScreenHeader title="Discover" />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {controls}
+        {loading ? (
+          <View>
+            <CookingLoader
+              label="Mixing your ingredients"
+              hint={`Looking for dishes with your ${entries.length} ingredients`}
+            />
+            <View style={styles.skeletons}>
+              {[0, 1, 2].map((index) => (
+                <FadeIn
+                  key={index}
+                  delay={stagger(index, 150)}
+                  style={[styles.skeletonCard, { backgroundColor: theme.backgroundElement }]}
+                >
+                  <Skeleton width={64} height={64} radius={Radius.lg} />
+                  <View style={styles.skeletonText}>
+                    <Skeleton width="80%" height={14} />
+                    <Skeleton width="55%" height={10} />
+                    <Skeleton width="40%" height={8} />
+                  </View>
+                </FadeIn>
+              ))}
+            </View>
+          </View>
+        ) : null}
+      </ScrollView>
+    </Screen>
   );
 }
 
+const MODES = [
+  { value: 'strict', label: 'Only what I have' },
+  { value: 'flexible', label: 'I can buy a little' },
+] as const;
+
+const STAPLES = ['water', 'salt', 'pepper', 'cooking oil', 'sugar', 'flour'];
+
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  controls: { padding: Spacing.three, gap: Spacing.three },
-  modes: { flexDirection: 'row', gap: Spacing.two },
-  mode: { flex: 1, alignItems: 'center', padding: Spacing.three, borderRadius: Spacing.two },
+  scroll: { paddingBottom: Spacing.five },
+  controls: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.three, gap: Spacing.three },
+  staplesBlock: { gap: Spacing.two },
   staples: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  staple: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.four,
+  error: { padding: Spacing.three, borderRadius: Radius.lg },
+  skeletons: { paddingHorizontal: Spacing.four, gap: Spacing.three },
+  skeletonCard: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    padding: 12,
+    borderRadius: Radius.xl,
   },
-  ask: { alignItems: 'center', padding: Spacing.three, borderRadius: Spacing.two },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  skeletonText: { flex: 1, justifyContent: 'center', gap: Spacing.two },
 });

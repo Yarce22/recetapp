@@ -46,3 +46,5 @@ example
 
 expo-env.d.ts
 # @end expo-cli
+# Scratch output from scripts/generate-brand-assets.mjs
+assets/brand/.rasterized/

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { startOfWeek, weekDates, type MealPlanEntryDto, type MealSlot } from '@recetapp/contracts';
 
@@ -9,7 +9,7 @@ import { makeGenerateWeek } from '@/features/meal-plan/application/generate-week
 import { makeGetWeek } from '@/features/meal-plan/application/get-week';
 import { makeRegenerateDay } from '@/features/meal-plan/application/regenerate-day';
 import { createMealPlanRepository } from '@/features/meal-plan/infrastructure/create-meal-plan-repository';
-import { WeeklyGrid } from '@/features/meal-plan/ui/weekly-grid';
+import { DAY_NAMES, WeeklyGrid } from '@/features/meal-plan/ui/weekly-grid';
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
 import {
@@ -18,9 +18,11 @@ import {
 } from '@/features/recipes/domain/recipe-suggestion-service';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
 import { API_BASE_URL } from '@/shared/config/api';
+import { Button, Chip, Screen, ScreenHeader } from '@/shared/ui/controls';
+import { CookingLoader } from '@/shared/ui/cooking-loader';
+import { FadeIn, Skeleton } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { ThemedView } from '@/shared/ui/themed-view';
-import { Spacing } from '@/shared/ui/theme';
+import { Radius, Spacing } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
 const ALL_SLOTS: MealSlot[] = ['breakfast', 'lunch', 'dinner'];
@@ -44,6 +46,10 @@ export default function MenuScreen() {
   const { preferences, deviceId } = usePreferences();
 
   const weekStartDate = useMemo(() => startOfWeek(todayIsoDate()), []);
+  const scrollRef = useRef<ScrollView>(null);
+  // Where the grid and each day card sit, for the day strip to scroll to.
+  const gridY = useRef(0);
+  const dayPositions = useRef<Record<string, number>>({});
 
   // Dinner only by default. Asking one model call for 21 genuinely different
   // dishes produces repetition; the user can widen it when they want to.
@@ -178,104 +184,164 @@ export default function MenuScreen() {
     );
   }
 
+  const days = weekDates(weekStartDate);
+  const today = todayIsoDate();
+
+  function scrollToDay(date: string) {
+    const y = dayPositions.current[date];
+    if (y === undefined) return;
+    scrollRef.current?.scrollTo({ y: gridY.current + y - Spacing.three, animated: true });
+  }
+
   return (
-    <ThemedView style={styles.screen}>
-      <ScrollView>
-        <View style={styles.header}>
-          <ThemedText type="title">Weekly menu</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            Week of {weekStartDate}
-          </ThemedText>
-        </View>
+    <Screen>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
+        <ScreenHeader
+          eyebrow={`Week of ${formatDay(weekStartDate)}`}
+          title="Weekly menu"
+          action={
+            <Button
+              label={planning ? 'Planning...' : 'Plan my week'}
+              variant="soft"
+              tone="lavender"
+              icon="refresh"
+              disabled={planning || pantry.length === 0}
+              onPress={planWeek}
+              style={styles.planButton}
+            />
+          }
+        />
 
         <View style={styles.controls}>
-          <View style={styles.slotPicker}>
-            {ALL_SLOTS.map((slot) => {
-              const on = slots.includes(slot);
+          <View style={styles.strip}>
+            {days.map((date, index) => {
+              const isToday = date === today;
               return (
-                <Pressable
-                  key={slot}
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: on }}
-                  accessibilityLabel={`Plan ${slot}`}
-                  onPress={() => toggleSlot(slot)}
-                  style={[
-                    styles.slotChip,
-                    {
-                      backgroundColor: on ? theme.backgroundSelected : theme.backgroundElement,
-                      opacity: on ? 1 : 0.5,
-                    },
-                  ]}
-                >
-                  <ThemedText type="small">{slot}</ThemedText>
-                </Pressable>
+                <FadeIn key={date} delay={index * 40} style={styles.stripCell}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Go to ${DAY_NAMES[index]}`}
+                    onPress={() => scrollToDay(date)}
+                    style={[
+                      styles.stripDay,
+                      { backgroundColor: isToday ? theme.primary : theme.backgroundElement },
+                    ]}
+                  >
+                    <ThemedText
+                      type="eyebrow"
+                      style={{ color: isToday ? theme.onPrimary : theme.textSecondary }}
+                    >
+                      {DAY_NAMES[index].slice(0, 3)}
+                    </ThemedText>
+                    <ThemedText
+                      type="smallBold"
+                      style={{ fontSize: 17, color: isToday ? theme.onPrimary : theme.text }}
+                    >
+                      {Number(date.slice(8))}
+                    </ThemedText>
+                  </Pressable>
+                </FadeIn>
               );
             })}
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={planning || pantry.length === 0}
-            onPress={planWeek}
-            style={[
-              styles.plan,
-              {
-                backgroundColor: theme.backgroundSelected,
-                opacity: planning || pantry.length === 0 ? 0.5 : 1,
-              },
-            ]}
-          >
-            <ThemedText type="smallBold">{planning ? 'Planning...' : 'Plan my week'}</ThemedText>
-          </Pressable>
+          <View style={styles.slotPicker}>
+            {ALL_SLOTS.map((slot) => (
+              <Chip
+                key={slot}
+                label={slot}
+                tone="lavender"
+                accessibilityRole="switch"
+                stateKey="checked"
+                accessibilityLabel={`Plan ${slot}`}
+                selected={slots.includes(slot)}
+                onPress={() => toggleSlot(slot)}
+              />
+            ))}
+          </View>
 
           {pantry.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary">
               Add something to your pantry first.
             </ThemedText>
           ) : null}
-          {error ? <ThemedText type="small">{error}</ThemedText> : null}
+          {error ? (
+            <View style={[styles.message, { backgroundColor: theme.warning }]}>
+              <ThemedText type="small" style={{ color: theme.warningInk }}>
+                {error}
+              </ThemedText>
+            </View>
+          ) : null}
           {notice ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {notice}
-            </ThemedText>
+            <View style={[styles.message, { backgroundColor: theme.butter }]}>
+              <ThemedText type="small" style={{ color: theme.butterInk }}>
+                {notice}
+              </ThemedText>
+            </View>
           ) : null}
         </View>
 
         {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator />
+          <View style={styles.skeletons}>
+            {[0, 1, 2].map((index) => (
+              <View
+                key={index}
+                style={[styles.skeletonDay, { backgroundColor: theme.backgroundElement }]}
+              >
+                <Skeleton width="40%" height={16} />
+                <Skeleton width="85%" height={12} />
+              </View>
+            ))}
           </View>
+        ) : planning ? (
+          <CookingLoader label="Planning your week" hint="One dish per meal, no repeats." />
         ) : (
-          <WeeklyGrid
-            weekStartDate={weekStartDate}
-            slots={slots}
-            entries={entries}
-            busyDate={busyDate}
-            onSelect={(entry) =>
-              router.push({
-                pathname: '/recipe/[id]',
-                params: { id: entry.dishId, title: entry.dishTitle },
-              })
-            }
-            onClear={clearSlot}
-            onRegenerateDay={regenerateDay}
-          />
+          <View onLayout={(event) => (gridY.current = event.nativeEvent.layout.y)}>
+            <WeeklyGrid
+              weekStartDate={weekStartDate}
+              slots={slots}
+              entries={entries}
+              busyDate={busyDate}
+              today={today}
+              onDayLayout={(date, y) => (dayPositions.current[date] = y)}
+              onSelect={(entry) =>
+                router.push({
+                  pathname: '/recipe/[id]',
+                  params: { id: entry.dishId, title: entry.dishTitle },
+                })
+              }
+              onClear={clearSlot}
+              onRegenerateDay={regenerateDay}
+            />
+          </View>
         )}
       </ScrollView>
-    </ThemedView>
+    </Screen>
   );
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "2026-10-12" → "12 Oct", read from the ISO parts to stay timezone-free. */
+function formatDay(isoDate: string): string {
+  return `${Number(isoDate.slice(8, 10))} ${MONTHS[Number(isoDate.slice(5, 7)) - 1]}`;
+}
+
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  header: { padding: Spacing.three, gap: Spacing.one },
-  controls: { paddingHorizontal: Spacing.three, gap: Spacing.three },
-  slotPicker: { flexDirection: 'row', gap: Spacing.two },
-  slotChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.four,
+  scroll: { paddingBottom: Spacing.five },
+  planButton: { minHeight: 44, paddingHorizontal: Spacing.three },
+  controls: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.three, gap: Spacing.three },
+  strip: { flexDirection: 'row', gap: 6 },
+  stripCell: { flex: 1 },
+  stripDay: {
+    height: 60,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
   },
-  plan: { alignItems: 'center', padding: Spacing.three, borderRadius: Spacing.two },
-  centered: { padding: Spacing.six, alignItems: 'center' },
+  slotPicker: { flexDirection: 'row', gap: Spacing.two },
+  message: { padding: Spacing.three, borderRadius: Radius.lg },
+  skeletons: { paddingHorizontal: Spacing.four, gap: Spacing.three },
+  skeletonDay: { padding: Spacing.three, borderRadius: Radius.xl, gap: 12 },
 });

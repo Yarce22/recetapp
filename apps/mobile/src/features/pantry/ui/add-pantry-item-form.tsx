@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
+import { Button, controlStyles } from '@/shared/ui/controls';
+import { FadeIn } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { Spacing } from '@/shared/ui/theme';
+import { Radius, Spacing, type Tone } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
 import type { AddPantryItemInput } from '../application/add-pantry-item';
@@ -10,10 +12,18 @@ import type { IngredientCategory } from '../domain/ingredient';
 import { makeQuantity } from '../domain/quantity';
 import type { Unit } from '../domain/units';
 
+import { CATEGORY_STYLE } from './category-style';
 import { ChipGroup } from './chip-group';
 
 const CATEGORIES = ['produce', 'dairy', 'meat', 'grain', 'spice', 'other'] as const;
 const UNITS = ['g', 'kg', 'ml', 'l', 'unit'] as const;
+
+const CATEGORY_LABELS = Object.fromEntries(
+  CATEGORIES.map((category) => [category, CATEGORY_STYLE[category].label]),
+) as Record<IngredientCategory, string>;
+const CATEGORY_TONES = Object.fromEntries(
+  CATEGORIES.map((category) => [category, CATEGORY_STYLE[category].tone]),
+) as Record<IngredientCategory, Tone>;
 
 export type AddPantryItemFormProps = {
   onSubmit: (input: AddPantryItemInput) => Promise<void>;
@@ -36,7 +46,7 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
   const [error, setError] = useState<string | null>(null);
 
   const inputStyle = [
-    styles.input,
+    controlStyles.input,
     { backgroundColor: theme.backgroundElement, color: theme.text },
   ];
 
@@ -71,9 +81,9 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
   }
 
   return (
-    <View style={styles.form}>
+    <FadeIn distance={40} style={styles.form}>
       <View style={styles.field}>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="smallBold" themeColor="textSecondary">
           Ingredient
         </ThemedText>
         <TextInput
@@ -86,8 +96,17 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
         />
       </View>
 
+      <ChipGroup
+        label="Category"
+        options={CATEGORIES}
+        value={category}
+        onChange={setCategory}
+        labels={CATEGORY_LABELS}
+        tones={CATEGORY_TONES}
+      />
+
       <View style={styles.field}>
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="smallBold" themeColor="textSecondary">
           How much
         </ThemedText>
         <TextInput
@@ -101,12 +120,12 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
         />
       </View>
 
-      <ChipGroup label="Unit" options={UNITS} value={unit} onChange={setUnit} />
-      <ChipGroup label="Category" options={CATEGORIES} value={category} onChange={setCategory} />
+      <ChipGroup label="Unit" options={UNITS} value={unit} onChange={setUnit} tones={{}} />
 
-      <View style={styles.field}>
+      <View style={[styles.reminder, { backgroundColor: theme.backgroundElement }]}>
+        <ThemedText type="smallBold">Warn me below (optional)</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Warn me below (optional)
+          You get a reminder when it drops under this amount.
         </ThemedText>
         <TextInput
           accessibilityLabel="Warn me below"
@@ -115,36 +134,30 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
           placeholder="100"
           keyboardType="decimal-pad"
           placeholderTextColor={theme.textSecondary}
-          style={inputStyle}
+          style={[inputStyle, { backgroundColor: theme.warning }]}
         />
       </View>
 
-      {error ? <ThemedText type="small">{error}</ThemedText> : null}
+      {error ? (
+        <ThemedText type="small" style={{ color: theme.warningInk }}>
+          {error}
+        </ThemedText>
+      ) : null}
 
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label={submitting ? 'Saving...' : 'Add to pantry'}
+        icon="add-circle-outline"
         disabled={submitting}
         onPress={handleSubmit}
-        style={[styles.submit, { backgroundColor: theme.backgroundSelected }]}
-      >
-        <ThemedText type="smallBold">{submitting ? 'Saving...' : 'Add to pantry'}</ThemedText>
-      </Pressable>
-    </View>
+        style={styles.submit}
+      />
+    </FadeIn>
   );
 }
 
 const styles = StyleSheet.create({
-  form: { gap: Spacing.three, padding: Spacing.three },
+  form: { gap: Spacing.four, padding: Spacing.four },
   field: { gap: Spacing.two },
-  input: {
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
-    fontSize: 16,
-  },
-  submit: {
-    alignItems: 'center',
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
-    marginTop: Spacing.two,
-  },
+  reminder: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.xl },
+  submit: { marginTop: Spacing.two },
 });

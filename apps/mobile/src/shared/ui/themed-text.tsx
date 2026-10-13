@@ -1,10 +1,20 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/shared/ui/theme';
+import { Fonts, ThemeColor, Typeface } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?:
+    | 'default'
+    | 'title'
+    | 'small'
+    | 'smallBold'
+    | 'subtitle'
+    | 'heading'
+    | 'eyebrow'
+    | 'link'
+    | 'linkPrimary'
+    | 'code';
   themeColor?: ThemeColor;
 };
 
@@ -15,14 +25,8 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
     <Text
       style={[
         { color: theme[themeColor ?? 'text'] },
-        type === 'default' && styles.default,
-        type === 'title' && styles.title,
-        type === 'small' && styles.small,
-        type === 'smallBold' && styles.smallBold,
-        type === 'subtitle' && styles.subtitle,
-        type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
-        type === 'code' && styles.code,
+        styles[type],
+        type === 'linkPrimary' && { color: theme.mintInk },
         style,
       ]}
       {...rest}
@@ -31,43 +35,14 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 }
 
 const styles = StyleSheet.create({
-  small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
-  },
-  smallBold: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 700,
-  },
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: 500,
-  },
-  title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
-  },
-  subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 14,
-  },
-  linkPrimary: {
-    lineHeight: 30,
-    fontSize: 14,
-    color: '#3c87f7',
-  },
-  code: {
-    fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
-    fontSize: 12,
-  },
+  default: { fontFamily: Typeface.body, fontSize: 16, lineHeight: 24 },
+  small: { fontFamily: Typeface.body, fontSize: 14, lineHeight: 20 },
+  smallBold: { fontFamily: Typeface.bodyBold, fontSize: 14, lineHeight: 20 },
+  eyebrow: { fontFamily: Typeface.bodyBold, fontSize: 12, lineHeight: 16, letterSpacing: 0.4 },
+  title: { fontFamily: Typeface.display, fontSize: 30, lineHeight: 36 },
+  subtitle: { fontFamily: Typeface.displayMedium, fontSize: 20, lineHeight: 26 },
+  heading: { fontFamily: Typeface.display, fontSize: 24, lineHeight: 28 },
+  link: { fontFamily: Typeface.bodyBold, lineHeight: 30, fontSize: 14 },
+  linkPrimary: { fontFamily: Typeface.bodyBold, lineHeight: 30, fontSize: 14 },
+  code: { fontFamily: Fonts.mono, fontSize: 12 },
 });

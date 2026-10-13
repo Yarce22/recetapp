@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { RecipeDto } from '@recetapp/contracts';
 
@@ -14,14 +14,18 @@ import {
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
 import { RecipeDetail } from '@/features/recipes/ui/recipe-detail';
 import { API_BASE_URL } from '@/shared/config/api';
+import { EmptyState } from '@/shared/ui/controls';
+import { CookingLoader } from '@/shared/ui/cooking-loader';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
-import { Spacing } from '@/shared/ui/theme';
+import { Radius, Spacing } from '@/shared/ui/theme';
+import { useTheme } from '@/shared/ui/use-theme';
 
 export default function RecipeDetailScreen() {
   // The title travels in the route because the backend keeps no record of
   // which dish an id referred to.
   const { id, title } = useLocalSearchParams<{ id: string; title?: string }>();
+  const theme = useTheme();
   const { entries } = usePantry();
   const { preferences, deviceId } = usePreferences();
 
@@ -92,8 +96,13 @@ export default function RecipeDetailScreen() {
 
   if (!title) {
     return (
-      <ThemedView style={styles.centered}>
-        <ThemedText type="small">Open this recipe from the Discover tab.</ThemedText>
+      <ThemedView style={styles.screen}>
+        <EmptyState
+          icon="restaurant-outline"
+          tone="peach"
+          title="No recipe here"
+          hint="Open this recipe from the Discover tab."
+        />
       </ThemedView>
     );
   }
@@ -102,16 +111,25 @@ export default function RecipeDetailScreen() {
     <ThemedView style={styles.screen}>
       {loading && !recipe ? (
         <View style={styles.centered}>
-          <ActivityIndicator />
+          <CookingLoader label="Writing the recipe" hint={title} />
         </View>
       ) : error && !recipe ? (
-        <View style={styles.centered}>
-          <ThemedText type="small">{error}</ThemedText>
-        </View>
+        <EmptyState
+          icon="alert-circle-outline"
+          tone="warning"
+          title="No recipe this time"
+          hint={error}
+        />
       ) : recipe ? (
         <>
           {error ? (
-            <ThemedText type="small" style={styles.inlineError}>
+            <ThemedText
+              type="small"
+              style={[
+                styles.inlineError,
+                { backgroundColor: theme.warning, color: theme.warningInk },
+              ]}
+            >
               {error}
             </ThemedText>
           ) : null}
@@ -129,5 +147,5 @@ export default function RecipeDetailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
-  inlineError: { padding: Spacing.three },
+  inlineError: { margin: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg },
 });
