@@ -1,0 +1,11 @@
+**/node_modules
+.git
+.env
+.env.*
+!.env.example
+apps/mobile/*
+!apps/mobile/package.json
+docs
+store
+**/__tests__
+**/*.test.ts
