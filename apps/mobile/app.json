@@ -54,6 +54,9 @@
         "projectId": "d3a1b2ee-40fd-4f03-856d-3ca6643a8336"
       }
     },
-    "owner": "yarce"
+    "owner": "yarce",
+    "updates": {
+      "url": "https://u.expo.dev/d3a1b2ee-40fd-4f03-856d-3ca6643a8336"
+    }
   }
 }
