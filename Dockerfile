@@ -20,10 +20,15 @@ FROM node:24-alpine
 ENV NODE_ENV=production
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY apps/api apps/api
 COPY packages/contracts packages/contracts
+
+# Copied after the sources so the install output wins. npm does not hoist
+# dependencies whose versions conflict across workspaces (e.g. zod), so the
+# API's own node_modules must come along with the root one.
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 
 USER node
 EXPOSE 8787
