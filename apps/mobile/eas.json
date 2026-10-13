@@ -17,14 +17,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://recetapp-api.example.com"
+        "EXPO_PUBLIC_API_URL": "https://recetapp-syfz.onrender.com"
       }
     },
     "production": {
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://recetapp-api.example.com"
+        "EXPO_PUBLIC_API_URL": "https://recetapp-syfz.onrender.com"
       }
     }
   },
