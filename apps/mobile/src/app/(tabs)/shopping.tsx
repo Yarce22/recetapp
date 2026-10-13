@@ -12,6 +12,8 @@ import { buildShoppingList } from '@/features/shopping-list/domain/build-shoppin
 import { planLowStockReminder } from '@/features/shopping-list/domain/plan-low-stock-reminder';
 import { createNotificationScheduler } from '@/features/shopping-list/infrastructure/expo-notification-scheduler';
 import { ShoppingListView } from '@/features/shopping-list/ui/shopping-list-view';
+import { useTranslation } from '@/shared/i18n/i18n-provider';
+import { withAllLocalizedStaples } from '@/shared/i18n/staples';
 import { Screen, ScreenHeader } from '@/shared/ui/controls';
 import { FadeIn, ProgressBar, Skeleton, useLoop } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -32,6 +34,8 @@ function todayIsoDate(): string {
 
 export default function ShoppingScreen() {
   const theme = useTheme();
+  const translator = useTranslation();
+  const { t } = translator;
   const { entries: pantry, loading: pantryLoading } = usePantry();
   const { preferences } = usePreferences();
 
@@ -61,7 +65,13 @@ export default function ShoppingScreen() {
   }, [weekStartDate]);
 
   const items = useMemo(
-    () => buildShoppingList({ pantry, planEntries, preferences }),
+    () =>
+      buildShoppingList({
+        pantry,
+        planEntries,
+        // A plan made in the other language names its staples differently.
+        preferences: { ...preferences, staples: withAllLocalizedStaples(preferences.staples) },
+      }),
     [pantry, planEntries, preferences],
   );
 
@@ -70,8 +80,10 @@ export default function ShoppingScreen() {
     // pending one so it can never name something already restocked.
     if (pantryLoading) return;
 
-    void createNotificationScheduler().scheduleLowStockReminder(planLowStockReminder(pantry));
-  }, [pantry, pantryLoading]);
+    void createNotificationScheduler().scheduleLowStockReminder(
+      planLowStockReminder(pantry, { t }),
+    );
+  }, [pantry, pantryLoading, t]);
 
   function toggle(name: string) {
     setChecked((current) => {
@@ -90,7 +102,7 @@ export default function ShoppingScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ScreenHeader title="Shopping" />
+        <ScreenHeader title={t('shopping.title')} />
 
         {loading || pantryLoading ? (
           <View style={styles.skeletons}>
@@ -106,17 +118,17 @@ export default function ShoppingScreen() {
                 <View style={[styles.summary, { backgroundColor: theme.sky }]}>
                   <View style={styles.summaryText}>
                     <ThemedText type="small" style={{ color: theme.skyInk }}>
-                      What is running low, plus what this week&apos;s menu needs.
+                      {t('shopping.summary')}
                     </ThemedText>
                     <ThemedText type="heading">
-                      {done} of {items.length} in the cart
+                      {t('shopping.progress', { done, total: items.length })}
                     </ThemedText>
                     <ProgressBar
                       value={items.length === 0 ? 0 : done / items.length}
                       color={theme.blue}
                       trackColor={theme.backgroundElement}
                       height={10}
-                      accessibilityLabel="Items ticked off"
+                      accessibilityLabel={t('shopping.progressLabel')}
                     />
                   </View>
                   <RollingCart />

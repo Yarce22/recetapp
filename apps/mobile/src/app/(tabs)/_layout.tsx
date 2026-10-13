@@ -2,20 +2,23 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
+import type { TranslationKey } from '@/shared/i18n/catalog';
 import { toneColors, Typeface, type Tone } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 import type { IconName } from '@/shared/ui/controls';
 
 /** Each tab owns a pastel; its icon sits in a pill of that color when active. */
-const TABS: { name: string; title: string; icon: IconName; tone: Tone }[] = [
-  { name: 'index', title: 'Pantry', icon: 'basket', tone: 'mint' },
-  { name: 'discover', title: 'Discover', icon: 'sparkles', tone: 'butter' },
-  { name: 'menu', title: 'Menu', icon: 'calendar', tone: 'lavender' },
-  { name: 'shopping', title: 'Shopping', icon: 'cart', tone: 'sky' },
+const TABS: { name: string; title: TranslationKey; icon: IconName; tone: Tone }[] = [
+  { name: 'index', title: 'tabs.pantry', icon: 'basket', tone: 'mint' },
+  { name: 'discover', title: 'tabs.discover', icon: 'sparkles', tone: 'butter' },
+  { name: 'menu', title: 'tabs.menu', icon: 'calendar', tone: 'lavender' },
+  { name: 'shopping', title: 'tabs.shopping', icon: 'cart', tone: 'sky' },
 ];
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Tabs
@@ -43,7 +46,7 @@ export default function TabsLayout() {
           key={tab.name}
           name={tab.name}
           options={{
-            title: tab.title,
+            title: t(tab.title),
             tabBarIcon: ({ color, focused }) => (
               <View
                 style={{

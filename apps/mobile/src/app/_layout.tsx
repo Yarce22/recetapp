@@ -4,11 +4,22 @@ import { useColorScheme } from 'react-native';
 
 import { PantryProvider } from '@/features/pantry/ui/pantry-provider';
 import { PreferencesProvider } from '@/features/preferences/ui/preferences-provider';
+import { I18nProvider, useI18n } from '@/shared/i18n/i18n-provider';
 import { AppLoading } from '@/shared/ui/app-loading';
 import { Typeface } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
 export default function RootLayout() {
+  // Outermost, so even the loading screen can speak the user's language.
+  return (
+    <I18nProvider>
+      <RootNavigator />
+    </I18nProvider>
+  );
+}
+
+function RootNavigator() {
+  const { t, status, hasChosen } = useI18n();
   const colorScheme = useColorScheme();
   const theme = useTheme();
 
@@ -22,8 +33,8 @@ export default function RootLayout() {
 
   // A font that fails to load should not lock the user out of the app; the
   // system font is an acceptable fallback.
-  if (!fontsLoaded && !fontError) {
-    return <AppLoading message="Warming up the kitchen…" />;
+  if ((!fontsLoaded && !fontError) || status === 'loading') {
+    return <AppLoading message={t('loading.kitchen')} />;
   }
 
   const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
@@ -52,18 +63,26 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: theme.background },
             }}
           >
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            {/* Nothing but the picker exists until a language is chosen, so a
+                fresh install lands on it instead of on a screen in a guessed one. */}
+            <Stack.Protected guard={hasChosen}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="pantry/add"
+                options={{ title: t('pantry.add'), presentation: 'modal' }}
+              />
+              <Stack.Screen
+                name="recipe/[id]"
+                options={{
+                  title: '',
+                  headerStyle: { backgroundColor: theme.peach },
+                  headerBackButtonDisplayMode: 'minimal',
+                }}
+              />
+            </Stack.Protected>
             <Stack.Screen
-              name="pantry/add"
-              options={{ title: 'Add to pantry', presentation: 'modal' }}
-            />
-            <Stack.Screen
-              name="recipe/[id]"
-              options={{
-                title: '',
-                headerStyle: { backgroundColor: theme.peach },
-                headerBackButtonDisplayMode: 'minimal',
-              }}
+              name="language"
+              options={{ headerShown: false, presentation: 'modal', animation: 'fade' }}
             />
           </Stack>
         </PantryProvider>

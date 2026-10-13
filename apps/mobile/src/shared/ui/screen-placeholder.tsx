@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 import { Spacing } from '@/shared/ui/theme';
@@ -16,12 +17,14 @@ export type ScreenPlaceholderProps = {
  * screen is self-documenting rather than silently empty.
  */
 export function ScreenPlaceholder({ title, description, phase }: ScreenPlaceholderProps) {
+  const { t } = useTranslation();
+
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">{title}</ThemedText>
       <ThemedText style={styles.description}>{description}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
-        Arrives in {phase}
+        {t('placeholder.arrives', { phase })}
       </ThemedText>
     </ThemedView>
   );

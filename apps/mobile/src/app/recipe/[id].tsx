@@ -6,14 +6,11 @@ import type { RecipeDto } from '@recetapp/contracts';
 
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
-import {
-  RateLimitedError,
-  RecipeRejectedError,
-  SuggestionServiceError,
-} from '@/features/recipes/domain/recipe-suggestion-service';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
+import { describeServiceError } from '@/features/recipes/ui/describe-service-error';
 import { RecipeDetail } from '@/features/recipes/ui/recipe-detail';
 import { API_BASE_URL } from '@/shared/config/api';
+import { useI18n } from '@/shared/i18n/i18n-provider';
 import { EmptyState } from '@/shared/ui/controls';
 import { CookingLoader } from '@/shared/ui/cooking-loader';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -26,6 +23,7 @@ export default function RecipeDetailScreen() {
   // which dish an id referred to.
   const { id, title } = useLocalSearchParams<{ id: string; title?: string }>();
   const theme = useTheme();
+  const { t, language } = useI18n();
   const { entries } = usePantry();
   const { preferences, deviceId } = usePreferences();
 
@@ -37,8 +35,10 @@ export default function RecipeDetailScreen() {
 
   const service = useMemo(
     () =>
-      deviceId ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId }) : null,
-    [deviceId],
+      deviceId
+        ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId, language })
+        : null,
+    [deviceId, language],
   );
 
   useEffect(() => {
@@ -69,17 +69,7 @@ export default function RecipeDetailScreen() {
         setError(null);
       } catch (cause) {
         if (cancelled) return;
-        if (cause instanceof RecipeRejectedError) {
-          const named = cause.ingredients.length > 0 ? `: ${cause.ingredients.join(', ')}` : '.';
-          setError(`This recipe uses something you asked to avoid${named}`);
-        } else if (cause instanceof RateLimitedError) {
-          const minutes = Math.ceil(cause.retryAfterSeconds / 60);
-          setError(`You have asked a lot in the last hour. Try again in about ${minutes} min.`);
-        } else if (cause instanceof SuggestionServiceError) {
-          setError(cause.message);
-        } else {
-          setError('Something went wrong writing that recipe.');
-        }
+        setError(describeServiceError(cause, t, 'recipe.error.generic'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -100,8 +90,8 @@ export default function RecipeDetailScreen() {
         <EmptyState
           icon="restaurant-outline"
           tone="peach"
-          title="No recipe here"
-          hint="Open this recipe from the Discover tab."
+          title={t('recipe.none.title')}
+          hint={t('recipe.none.hint')}
         />
       </ThemedView>
     );
@@ -111,13 +101,13 @@ export default function RecipeDetailScreen() {
     <ThemedView style={styles.screen}>
       {loading && !recipe ? (
         <View style={styles.centered}>
-          <CookingLoader label="Writing the recipe" hint={title} />
+          <CookingLoader label={t('recipe.loader')} hint={title} />
         </View>
       ) : error && !recipe ? (
         <EmptyState
           icon="alert-circle-outline"
           tone="warning"
-          title="No recipe this time"
+          title={t('recipe.failed')}
           hint={error}
         />
       ) : recipe ? (

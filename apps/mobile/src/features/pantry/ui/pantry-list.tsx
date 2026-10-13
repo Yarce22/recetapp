@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactElement } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { Badge, EmptyState, IconTile } from '@/shared/ui/controls';
 import { FadeIn, stagger } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -28,6 +29,8 @@ export type PantryListProps = {
  * storage, which is what keeps it renderable in a test without a database.
  */
 export function PantryList({ entries, onSelect, header = null }: PantryListProps) {
+  const { t } = useTranslation();
+
   if (entries.length === 0) {
     return (
       <View style={styles.emptyWrap}>
@@ -35,8 +38,8 @@ export function PantryList({ entries, onSelect, header = null }: PantryListProps
         <EmptyState
           icon="basket-outline"
           tone="mint"
-          title="There is nothing in your pantry yet"
-          hint="Add what you have at home and RecetApp can start proposing dishes."
+          title={t('pantry.empty.title')}
+          hint={t('pantry.empty.hint')}
         />
       </View>
     );
@@ -65,13 +68,14 @@ function PantryRow({
   onSelect: PantryListProps['onSelect'];
 }) {
   const theme = useTheme();
+  const translator = useTranslation();
   const low = isLowStock(entry.item);
   const category = CATEGORY_STYLE[entry.ingredient.category];
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint="Removes it from the pantry"
+      accessibilityHint={translator.t('pantry.row.hint')}
       onPress={() => onSelect(entry)}
       style={({ pressed }) => [
         styles.row,
@@ -85,10 +89,10 @@ function PantryRow({
           {entry.ingredient.displayName}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {formatQuantity(entry.item.quantity)}
+          {formatQuantity(entry.item.quantity, translator)}
         </ThemedText>
       </View>
-      {low ? <Badge label="Low" tone="warning" /> : null}
+      {low ? <Badge label={translator.t('pantry.low')} tone="warning" /> : null}
       <Ionicons name="close" size={18} color={theme.textSecondary} />
     </Pressable>
   );

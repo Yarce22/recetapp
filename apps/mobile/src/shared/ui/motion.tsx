@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { Radius } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
@@ -281,12 +282,13 @@ export function IndeterminateBar({ color, width = 200 }: { color: string; width?
 /** Ring that spins: a short wait the user started. */
 export function Spinner({ size = 24, color }: { size?: number; color?: string }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const turn = useLoop(900, { easing: Easing.linear });
 
   return (
     <Animated.View
       accessibilityRole="progressbar"
-      accessibilityLabel="Loading"
+      accessibilityLabel={t('loading.spinner')}
       style={{
         width: size,
         height: size,

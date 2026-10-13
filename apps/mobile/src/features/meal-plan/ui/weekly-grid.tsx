@@ -3,27 +3,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { weekDates, type MealPlanEntryDto, type MealSlot } from '@recetapp/contracts';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { Badge, IconTile, type IconName } from '@/shared/ui/controls';
 import { FadeIn, Skeleton, Spinner, stagger } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Radius, Spacing, type Tone } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
-
-/**
- * Day names indexed by position in the week, not derived from the date.
- *
- * `toLocaleDateString` would reintroduce the timezone the ISO dates exist to
- * avoid, and `weekDates` already guarantees the order starts on Monday.
- */
-export const DAY_NAMES = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-] as const;
 
 const SLOT_STYLE: Record<MealSlot, { icon: IconName; tone: Tone }> = {
   breakfast: { icon: 'cafe-outline', tone: 'butter' },
@@ -58,6 +43,10 @@ export function WeeklyGrid({
   onDayLayout,
 }: WeeklyGridProps) {
   const theme = useTheme();
+  const { t, weekdayName } = useTranslation();
+  // Day names come from the position in the week, not from the date:
+  // `weekDates` guarantees Monday first, and formatting the date would
+  // reintroduce the timezone the ISO dates exist to avoid.
   const days = weekDates(weekStartDate);
 
   const find = (date: string, slot: MealSlot) =>
@@ -66,7 +55,7 @@ export function WeeklyGrid({
   return (
     <View style={styles.week}>
       {days.map((date, index) => {
-        const dayName = DAY_NAMES[index];
+        const dayName = weekdayName(index);
         const busy = busyDate === date;
         const isToday = date === today;
 
@@ -86,11 +75,11 @@ export function WeeklyGrid({
               <View style={styles.dayHeader}>
                 <View style={styles.dayTitle}>
                   <ThemedText type="subtitle">{dayName}</ThemedText>
-                  {isToday ? <Badge label="Today" tone="mint" /> : null}
+                  {isToday ? <Badge label={t('grid.today')} tone="mint" /> : null}
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Plan something else for ${dayName}`}
+                  accessibilityLabel={t('grid.regenerateDay', { day: dayName })}
                   accessibilityState={{ disabled: busy, busy }}
                   onPress={() => !busy && onRegenerateDay(date)}
                   hitSlop={4}
@@ -110,6 +99,7 @@ export function WeeklyGrid({
               {slots.map((slot) => {
                 const entry = find(date, slot);
                 const slotStyle = SLOT_STYLE[slot];
+                const mealName = t(`meal.${slot}`);
 
                 return (
                   <View key={slot} style={styles.slot}>
@@ -121,7 +111,7 @@ export function WeeklyGrid({
                           themeColor="textSecondary"
                           style={styles.slotName}
                         >
-                          {slot}
+                          {mealName}
                         </ThemedText>
                       ) : null}
 
@@ -139,7 +129,7 @@ export function WeeklyGrid({
                       ) : (
                         // An empty slot says so. A blank row reads like a bug.
                         <ThemedText type="small" themeColor="textSecondary">
-                          Nothing planned
+                          {t('grid.empty')}
                         </ThemedText>
                       )}
                     </View>
@@ -147,7 +137,7 @@ export function WeeklyGrid({
                     {entry && !busy ? (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={`Clear ${slot} on ${dayName}`}
+                        accessibilityLabel={t('grid.clearMeal', { meal: mealName, day: dayName })}
                         onPress={() => onClear(date, slot)}
                         hitSlop={10}
                         style={styles.clear}

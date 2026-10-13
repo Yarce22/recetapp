@@ -9,15 +9,13 @@ import { makeGenerateWeek } from '@/features/meal-plan/application/generate-week
 import { makeGetWeek } from '@/features/meal-plan/application/get-week';
 import { makeRegenerateDay } from '@/features/meal-plan/application/regenerate-day';
 import { createMealPlanRepository } from '@/features/meal-plan/infrastructure/create-meal-plan-repository';
-import { DAY_NAMES, WeeklyGrid } from '@/features/meal-plan/ui/weekly-grid';
+import { WeeklyGrid } from '@/features/meal-plan/ui/weekly-grid';
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
-import {
-  RateLimitedError,
-  SuggestionServiceError,
-} from '@/features/recipes/domain/recipe-suggestion-service';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
+import { describeServiceError } from '@/features/recipes/ui/describe-service-error';
 import { API_BASE_URL } from '@/shared/config/api';
+import { useI18n } from '@/shared/i18n/i18n-provider';
 import { Button, Chip, Screen, ScreenHeader } from '@/shared/ui/controls';
 import { CookingLoader } from '@/shared/ui/cooking-loader';
 import { FadeIn, Skeleton } from '@/shared/ui/motion';
@@ -42,6 +40,7 @@ function todayIsoDate(): string {
 
 export default function MenuScreen() {
   const theme = useTheme();
+  const { t, language, formatDate, weekdayName } = useI18n();
   const { entries: pantry } = usePantry();
   const { preferences, deviceId } = usePreferences();
 
@@ -59,12 +58,16 @@ export default function MenuScreen() {
   const [planning, setPlanning] = useState(false);
   const [busyDate, setBusyDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A flag, not text, so reading the plan does not depend on the language.
+  const [readFailed, setReadFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const service = useMemo(
     () =>
-      deviceId ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId }) : null,
-    [deviceId],
+      deviceId
+        ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId, language })
+        : null,
+    [deviceId, language],
   );
   const repositoryPromise = useMemo(() => createMealPlanRepository(), []);
 
@@ -82,7 +85,7 @@ export default function MenuScreen() {
         const week = await makeGetWeek(repository)(weekStartDate);
         if (!cancelled) setEntries(week);
       } catch {
-        if (!cancelled) setError('Could not read your plan.');
+        if (!cancelled) setReadFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -93,20 +96,17 @@ export default function MenuScreen() {
     };
   }, [repositoryPromise, weekStartDate]);
 
-  function describeFailure(cause: unknown): string {
-    if (cause instanceof RateLimitedError) {
-      const minutes = Math.ceil(cause.retryAfterSeconds / 60);
-      return `You have asked a lot in the last hour. Try again in about ${minutes} min.`;
-    }
-    if (cause instanceof SuggestionServiceError) return cause.message;
-    return 'Something went wrong planning your week.';
-  }
+  const describeFailure = useCallback(
+    (cause: unknown) => describeServiceError(cause, t, 'menu.error.generic'),
+    [t],
+  );
 
-  function describeUnfilled(count: number): string | null {
-    if (count === 0) return null;
-    // Saying so beats leaving gaps the user has to notice and explain.
-    return `${count} ${count === 1 ? 'meal' : 'meals'} could not be filled without repeating a dish. Add more to your pantry, or allow a couple of extra ingredients.`;
-  }
+  const describeUnfilled = useCallback(
+    (count: number): string | null =>
+      // Saying so beats leaving gaps the user has to notice and explain.
+      count === 0 ? null : t('menu.unfilled', { count }),
+    [t],
+  );
 
   const planWeek = useCallback(async () => {
     if (!service) return;
@@ -132,7 +132,17 @@ export default function MenuScreen() {
     } finally {
       setPlanning(false);
     }
-  }, [service, repositoryPromise, weekStartDate, slots, pantry, preferences, reload]);
+  }, [
+    service,
+    repositoryPromise,
+    weekStartDate,
+    slots,
+    pantry,
+    preferences,
+    reload,
+    describeFailure,
+    describeUnfilled,
+  ]);
 
   const regenerateDay = useCallback(
     async (date: string) => {
@@ -161,7 +171,17 @@ export default function MenuScreen() {
         setBusyDate(null);
       }
     },
-    [service, repositoryPromise, weekStartDate, slots, pantry, preferences, reload],
+    [
+      service,
+      repositoryPromise,
+      weekStartDate,
+      slots,
+      pantry,
+      preferences,
+      reload,
+      describeFailure,
+      describeUnfilled,
+    ],
   );
 
   const clearSlot = useCallback(
@@ -197,11 +217,11 @@ export default function MenuScreen() {
     <Screen>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
         <ScreenHeader
-          eyebrow={`Week of ${formatDay(weekStartDate)}`}
-          title="Weekly menu"
+          eyebrow={t('menu.weekOf', { date: formatDate(weekStartDate) })}
+          title={t('menu.title')}
           action={
             <Button
-              label={planning ? 'Planning...' : 'Plan my week'}
+              label={planning ? t('menu.planning') : t('menu.plan')}
               variant="soft"
               tone="lavender"
               icon="refresh"
@@ -220,7 +240,7 @@ export default function MenuScreen() {
                 <FadeIn key={date} delay={index * 40} style={styles.stripCell}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Go to ${DAY_NAMES[index]}`}
+                    accessibilityLabel={t('menu.goToDay', { day: weekdayName(index) })}
                     onPress={() => scrollToDay(date)}
                     style={[
                       styles.stripDay,
@@ -231,7 +251,7 @@ export default function MenuScreen() {
                       type="eyebrow"
                       style={{ color: isToday ? theme.onPrimary : theme.textSecondary }}
                     >
-                      {DAY_NAMES[index].slice(0, 3)}
+                      {weekdayName(index, 'short')}
                     </ThemedText>
                     <ThemedText
                       type="smallBold"
@@ -249,11 +269,11 @@ export default function MenuScreen() {
             {ALL_SLOTS.map((slot) => (
               <Chip
                 key={slot}
-                label={slot}
+                label={t(`meal.${slot}`)}
                 tone="lavender"
                 accessibilityRole="switch"
                 stateKey="checked"
-                accessibilityLabel={`Plan ${slot}`}
+                accessibilityLabel={t('menu.planMeal', { meal: t(`meal.${slot}`) })}
                 selected={slots.includes(slot)}
                 onPress={() => toggleSlot(slot)}
               />
@@ -262,13 +282,13 @@ export default function MenuScreen() {
 
           {pantry.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary">
-              Add something to your pantry first.
+              {t('pantry.addFirst')}
             </ThemedText>
           ) : null}
-          {error ? (
+          {error || readFailed ? (
             <View style={[styles.message, { backgroundColor: theme.warning }]}>
               <ThemedText type="small" style={{ color: theme.warningInk }}>
-                {error}
+                {error ?? t('menu.error.read')}
               </ThemedText>
             </View>
           ) : null}
@@ -294,7 +314,7 @@ export default function MenuScreen() {
             ))}
           </View>
         ) : planning ? (
-          <CookingLoader label="Planning your week" hint="One dish per meal, no repeats." />
+          <CookingLoader label={t('menu.loader.label')} hint={t('menu.loader.hint')} />
         ) : (
           <View onLayout={(event) => (gridY.current = event.nativeEvent.layout.y)}>
             <WeeklyGrid
@@ -318,13 +338,6 @@ export default function MenuScreen() {
       </ScrollView>
     </Screen>
   );
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** "2026-10-12" → "12 Oct", read from the ISO parts to stay timezone-free. */
-function formatDay(isoDate: string): string {
-  return `${Number(isoDate.slice(8, 10))} ${MONTHS[Number(isoDate.slice(5, 7)) - 1]}`;
 }
 
 const styles = StyleSheet.create({

@@ -5,10 +5,11 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import type { IngredientCategory } from '@/features/pantry/domain/ingredient';
 import { isLowStock } from '@/features/pantry/domain/pantry-item';
-import { CATEGORY_STYLE } from '@/features/pantry/ui/category-style';
+import { CATEGORY_STYLE, categoryLabel } from '@/features/pantry/ui/category-style';
 import { PantryList } from '@/features/pantry/ui/pantry-list';
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
-import { Chip, IconTile, Screen, ScreenHeader } from '@/shared/ui/controls';
+import { useTranslation } from '@/shared/i18n/i18n-provider';
+import { Chip, IconButton, IconTile, Screen, ScreenHeader } from '@/shared/ui/controls';
 import { FadeIn, Skeleton, stagger } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Radius, Shadow, Spacing } from '@/shared/ui/theme';
@@ -18,6 +19,7 @@ type Filter = IngredientCategory | 'all';
 
 export default function PantryScreen() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const { entries, loading, error, removeItem } = usePantry();
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -42,14 +44,14 @@ export default function PantryScreen() {
         <FadeIn>
           <Pressable
             accessibilityRole="button"
-            accessibilityHint="Opens the shopping list"
+            accessibilityHint={t('pantry.runningLow.hint')}
             onPress={() => router.push('/shopping')}
             style={[styles.banner, { backgroundColor: theme.warning }]}
           >
             <IconTile icon="alert-circle-outline" tone="warning" size={40} />
             <View style={styles.bannerText}>
               <ThemedText type="smallBold" style={{ color: theme.warningInk }}>
-                Running low
+                {t('pantry.runningLow')}
               </ThemedText>
               <ThemedText type="small" numberOfLines={1} style={{ color: theme.warningInk }}>
                 {low.map((entry) => entry.ingredient.displayName).join(', ')}
@@ -67,7 +69,7 @@ export default function PantryScreen() {
           contentContainerStyle={styles.filters}
         >
           <Chip
-            label={`All · ${entries.length}`}
+            label={t('pantry.filterAll', { count: entries.length })}
             tone="lavender"
             selected={activeFilter === 'all'}
             onPress={() => setFilter('all')}
@@ -75,7 +77,7 @@ export default function PantryScreen() {
           {categories.map((category) => (
             <Chip
               key={category}
-              label={CATEGORY_STYLE[category].label}
+              label={categoryLabel(t, category)}
               tone={CATEGORY_STYLE[category].tone}
               selected={activeFilter === category}
               onPress={() => setFilter(category)}
@@ -94,7 +96,20 @@ export default function PantryScreen() {
 
   return (
     <Screen>
-      <ScreenHeader eyebrow="What are we cooking today?" title="Pantry" />
+      <ScreenHeader
+        eyebrow={t('pantry.eyebrow')}
+        title={t('pantry.title')}
+        action={
+          // The language lives here, quietly: it is chosen once and rarely
+          // changed, so it should not compete with the pantry for attention.
+          <IconButton
+            icon="language-outline"
+            accessibilityLabel={t('language.change')}
+            onPress={() => router.push('/language')}
+            size={40}
+          />
+        }
+      />
 
       {loading ? (
         <View style={styles.skeletons}>
@@ -122,7 +137,7 @@ export default function PantryScreen() {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Add to pantry"
+        accessibilityLabel={t('pantry.add')}
         onPress={() => router.push('/pantry/add')}
         style={({ pressed }) => [
           styles.fab,

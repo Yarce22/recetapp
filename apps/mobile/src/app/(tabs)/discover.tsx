@@ -6,13 +6,12 @@ import type { DishSuggestionDto, SuggestionMode } from '@recetapp/contracts';
 
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
-import {
-  RateLimitedError,
-  SuggestionServiceError,
-} from '@/features/recipes/domain/recipe-suggestion-service';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
+import { describeServiceError } from '@/features/recipes/ui/describe-service-error';
 import { SuggestionList } from '@/features/recipes/ui/suggestion-list';
 import { API_BASE_URL } from '@/shared/config/api';
+import { useI18n } from '@/shared/i18n/i18n-provider';
+import { stapleLabel } from '@/shared/i18n/staples';
 import { Button, Chip, Screen, ScreenHeader, SegmentedControl } from '@/shared/ui/controls';
 import { CookingLoader } from '@/shared/ui/cooking-loader';
 import { FadeIn, Skeleton, stagger } from '@/shared/ui/motion';
@@ -22,6 +21,7 @@ import { useTheme } from '@/shared/ui/use-theme';
 
 export default function DiscoverScreen() {
   const theme = useTheme();
+  const { t, language } = useI18n();
   const { entries } = usePantry();
   const { preferences, deviceId, ready, update, toggleStapleByName } = usePreferences();
 
@@ -33,8 +33,10 @@ export default function DiscoverScreen() {
 
   const service = useMemo(
     () =>
-      deviceId ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId }) : null,
-    [deviceId],
+      deviceId
+        ? createHttpRecipeSuggestionService({ baseUrl: API_BASE_URL, deviceId, language })
+        : null,
+    [deviceId, language],
   );
 
   const ask = useCallback(async () => {
@@ -48,18 +50,16 @@ export default function DiscoverScreen() {
       setFilteredOut(result.filteredOut);
       setAsked(true);
     } catch (cause) {
-      if (cause instanceof RateLimitedError) {
-        const minutes = Math.ceil(cause.retryAfterSeconds / 60);
-        setError(`You have asked a lot in the last hour. Try again in about ${minutes} min.`);
-      } else if (cause instanceof SuggestionServiceError) {
-        setError(cause.message);
-      } else {
-        setError('Something went wrong looking for dishes.');
-      }
+      setError(describeServiceError(cause, t, 'discover.error'));
     } finally {
       setLoading(false);
     }
-  }, [service, entries, preferences]);
+  }, [service, entries, preferences, t]);
+
+  const modes = [
+    { value: 'strict', label: t('discover.mode.strict') },
+    { value: 'flexible', label: t('discover.mode.flexible') },
+  ] as const;
 
   const setMode = (mode: SuggestionMode) => update({ ...preferences, suggestionMode: mode });
   const canAsk = !loading && ready && entries.length > 0;
@@ -67,7 +67,7 @@ export default function DiscoverScreen() {
   const controls = (
     <View style={styles.controls}>
       <SegmentedControl
-        options={MODES}
+        options={modes}
         value={preferences.suggestionMode}
         onChange={setMode}
         tone="mint"
@@ -75,13 +75,13 @@ export default function DiscoverScreen() {
 
       <View style={styles.staplesBlock}>
         <ThemedText type="small" themeColor="textSecondary">
-          Staples assumed available. Tap to turn one off.
+          {t('discover.staples.hint')}
         </ThemedText>
         <View style={styles.staples}>
           {STAPLES.map((staple) => (
             <Chip
               key={staple}
-              label={staple}
+              label={stapleLabel(t, staple)}
               tone="butter"
               accessibilityRole="switch"
               stateKey="checked"
@@ -93,7 +93,7 @@ export default function DiscoverScreen() {
       </View>
 
       <Button
-        label={loading ? 'Thinking...' : 'What can I cook?'}
+        label={loading ? t('discover.thinking') : t('discover.ask')}
         icon="sparkles"
         disabled={!canAsk}
         onPress={ask}
@@ -101,7 +101,7 @@ export default function DiscoverScreen() {
 
       {entries.length === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
-          Add something to your pantry first.
+          {t('pantry.addFirst')}
         </ThemedText>
       ) : null}
 
@@ -118,7 +118,7 @@ export default function DiscoverScreen() {
   if (asked && !loading) {
     return (
       <Screen>
-        <ScreenHeader title="Discover" />
+        <ScreenHeader title={t('discover.title')} />
         <SuggestionList
           suggestions={suggestions}
           filteredOut={filteredOut}
@@ -139,14 +139,14 @@ export default function DiscoverScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Discover" />
+      <ScreenHeader title={t('discover.title')} />
       <ScrollView contentContainerStyle={styles.scroll}>
         {controls}
         {loading ? (
           <View>
             <CookingLoader
-              label="Mixing your ingredients"
-              hint={`Looking for dishes with your ${entries.length} ingredients`}
+              label={t('discover.loader.label')}
+              hint={t('discover.loader.hint', { count: entries.length })}
             />
             <View style={styles.skeletons}>
               {[0, 1, 2].map((index) => (
@@ -171,11 +171,7 @@ export default function DiscoverScreen() {
   );
 }
 
-const MODES = [
-  { value: 'strict', label: 'Only what I have' },
-  { value: 'flexible', label: 'I can buy a little' },
-] as const;
-
+// Stored and sent as these English names; only their labels are translated.
 const STAPLES = ['water', 'salt', 'pepper', 'cooking oil', 'sugar', 'flour'];
 
 const styles = StyleSheet.create({

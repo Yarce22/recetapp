@@ -4,6 +4,7 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import type { DishSuggestionDto, SuggestionMode } from '@recetapp/contracts';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { Badge, EmptyState, IconTile } from '@/shared/ui/controls';
 import { FadeIn, ProgressBar, stagger } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -29,6 +30,8 @@ export function SuggestionList({
   onSelect,
   header = null,
 }: SuggestionListProps) {
+  const { t } = useTranslation();
+
   if (suggestions.length === 0) {
     return (
       <View style={styles.emptyWrap}>
@@ -57,7 +60,7 @@ export function SuggestionList({
       ListFooterComponent={
         filteredOut > 0 ? (
           <ThemedText type="small" themeColor="textSecondary" style={styles.footer}>
-            {filteredOut} more did not fit what you have.
+            {t('suggestion.moreFiltered', { count: filteredOut })}
           </ThemedText>
         ) : null
       }
@@ -77,6 +80,7 @@ function SuggestionCard({
   onSelect: SuggestionListProps['onSelect'];
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const ready = suggestion.missingIngredients.length === 0;
   const percent = Math.round(suggestion.coverage * 100);
   // The first dish you can cook right now gets the big mint card.
@@ -95,7 +99,7 @@ function SuggestionCard({
       <View style={styles.cardTop}>
         <IconTile icon="restaurant-outline" tone={hero ? 'mint' : tone} size={hero ? 56 : 48} />
         <View style={styles.cardTitle}>
-          {ready ? <Badge label="Ready to cook" tone="mint" /> : null}
+          {ready ? <Badge label={t('suggestion.ready')} tone="mint" /> : null}
           <ThemedText type={hero ? 'heading' : 'smallBold'} style={!hero && styles.title}>
             {suggestion.title}
           </ThemedText>
@@ -111,7 +115,7 @@ function SuggestionCard({
         // Naming what is missing is more useful than a coverage percentage
         // alone: it is the shopping list for this dish.
         <ThemedText type="smallBold" style={{ color: theme.butterInk }}>
-          Missing: {suggestion.missingIngredients.join(', ')}
+          {t('suggestion.missing', { items: suggestion.missingIngredients.join(', ') })}
         </ThemedText>
       )}
 
@@ -121,11 +125,11 @@ function SuggestionCard({
             value={suggestion.coverage}
             color={ready ? theme.accent : theme.honey}
             trackColor={hero ? theme.backgroundElement : theme.track}
-            accessibilityLabel={`${percent}% of the ingredients are in your pantry`}
+            accessibilityLabel={t('suggestion.coverageLabel', { percent })}
           />
         </View>
         <ThemedText type="eyebrow" themeColor="textSecondary">
-          {percent}% in pantry
+          {t('suggestion.coverage', { percent })}
         </ThemedText>
       </View>
     </Pressable>
@@ -139,23 +143,25 @@ function SuggestionCard({
  * is already open, so suggesting it again would be useless advice.
  */
 function EmptyStateFor({ mode, filteredOut }: { mode: SuggestionMode; filteredOut: number }) {
+  const { t } = useTranslation();
+
   return mode === 'strict' ? (
     <EmptyState
       icon="search-outline"
       tone="butter"
-      title="Nothing you can make right now"
+      title={t('suggestion.strictEmpty.title')}
       hint={
         filteredOut > 0
-          ? `${filteredOut} dishes needed something you do not have. Switch to flexible to see them.`
-          : 'Switch to flexible to see dishes that need a couple of extra ingredients.'
+          ? t('suggestion.strictEmpty.hintFiltered', { count: filteredOut })
+          : t('suggestion.strictEmpty.hint')
       }
     />
   ) : (
     <EmptyState
       icon="basket-outline"
       tone="peach"
-      title="No dishes came back"
-      hint="Add a few more ingredients to your pantry and try again."
+      title={t('suggestion.flexEmpty.title')}
+      hint={t('suggestion.flexEmpty.hint')}
     />
   );
 }

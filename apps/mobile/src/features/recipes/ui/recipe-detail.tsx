@@ -4,6 +4,7 @@ import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from 'react
 import { normalizeIngredientName, type RecipeDto } from '@recetapp/contracts';
 
 import { formatQuantity } from '@/features/pantry/ui/format-quantity';
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { FadeIn, stagger, useLoop } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Radius, Shadow, Spacing } from '@/shared/ui/theme';
@@ -17,6 +18,8 @@ export type RecipeDetailProps = {
 
 export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: RecipeDetailProps) {
   const theme = useTheme();
+  const translator = useTranslation();
+  const { t } = translator;
 
   const missing = new Set(missingIngredients.map(normalizeIngredientName));
 
@@ -35,31 +38,37 @@ export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: R
           <View style={styles.stats}>
             <View style={[styles.stat, { backgroundColor: theme.mint }]}>
               <ThemedText type="eyebrow" style={{ color: theme.mintInk }}>
-                Time
+                {t('recipe.time')}
               </ThemedText>
-              <ThemedText type="smallBold">{recipe.timeMinutes} min</ThemedText>
+              <ThemedText type="smallBold">
+                {t('recipe.minutes', { minutes: recipe.timeMinutes })}
+              </ThemedText>
             </View>
             <View style={[styles.stat, { backgroundColor: theme.lavender }]}>
               <ThemedText type="eyebrow" style={{ color: theme.lavenderInk }}>
-                Difficulty
+                {t('recipe.difficulty')}
               </ThemedText>
               <ThemedText type="smallBold" style={styles.capitalize}>
-                {recipe.difficulty}
+                {/* The model's enum value, shown as a word in the user's language. */}
+                {t(`difficulty.${recipe.difficulty}`)}
               </ThemedText>
             </View>
             <View style={[styles.stat, styles.servings, { backgroundColor: theme.butter }]}>
               <View>
                 <ThemedText type="eyebrow" style={{ color: theme.butterInk }}>
-                  Servings
+                  {t('recipe.servings')}
                 </ThemedText>
-                <ThemedText type="smallBold" accessibilityLabel={`${recipe.servings} servings`}>
+                <ThemedText
+                  type="smallBold"
+                  accessibilityLabel={t('recipe.servingsLabel', { count: recipe.servings })}
+                >
                   {recipe.servings}
                 </ThemedText>
               </View>
               <View style={styles.stepper}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="More servings"
+                  accessibilityLabel={t('recipe.moreServings')}
                   hitSlop={8}
                   onPress={() => onServingsChange(recipe.servings + 1)}
                   style={[styles.stepperButton, { backgroundColor: theme.backgroundElement }]}
@@ -68,7 +77,7 @@ export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: R
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Fewer servings"
+                  accessibilityLabel={t('recipe.fewerServings')}
                   hitSlop={8}
                   // Below one serving there is no recipe left to scale.
                   onPress={() => recipe.servings > 1 && onServingsChange(recipe.servings - 1)}
@@ -86,14 +95,14 @@ export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: R
             <View style={[styles.notice, { backgroundColor: theme.warning }]}>
               <Ionicons name="cart-outline" size={20} color={theme.warningInk} />
               <ThemedText type="small" style={[styles.flex, { color: theme.warningInk }]}>
-                You need to buy: {missingIngredients.join(', ')}
+                {t('recipe.toBuy', { items: missingIngredients.join(', ') })}
               </ThemedText>
             </View>
           </FadeIn>
         ) : null}
 
         <FadeIn delay={150} style={styles.section}>
-          <ThemedText type="subtitle">Ingredients</ThemedText>
+          <ThemedText type="subtitle">{t('recipe.ingredients')}</ThemedText>
           <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
             {recipe.ingredients.map((ingredient, index) => {
               const isMissing = missing.has(normalizeIngredientName(ingredient.name));
@@ -121,10 +130,12 @@ export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: R
                     themeColor={isMissing ? 'textSecondary' : 'text'}
                     style={styles.flex}
                   >
-                    {ingredient.optional ? `${ingredient.name} (optional)` : ingredient.name}
+                    {ingredient.optional
+                      ? t('recipe.optional', { name: ingredient.name })
+                      : ingredient.name}
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    {formatQuantity(ingredient.quantity)}
+                    {formatQuantity(ingredient.quantity, translator)}
                   </ThemedText>
                 </FadeIn>
               );
@@ -133,7 +144,7 @@ export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: R
         </FadeIn>
 
         <FadeIn delay={250} style={styles.section}>
-          <ThemedText type="subtitle">Steps</ThemedText>
+          <ThemedText type="subtitle">{t('recipe.steps')}</ThemedText>
           {recipe.steps.map((step, index) => (
             <View key={index} style={[styles.step, { backgroundColor: theme.backgroundElement }]}>
               {/* Numbered rather than bulleted: the order is the recipe. */}

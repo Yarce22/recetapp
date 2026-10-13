@@ -56,11 +56,23 @@ export interface RecipeSuggestionService {
   planWeek(input: MealPlanRequestInput): Promise<MealPlanResult>;
 }
 
+/**
+ * Why a request failed, as a stable code the UI turns into text.
+ *
+ * The message on the error is English and for logs; what the user reads is
+ * chosen from the code at render time, in their language.
+ */
+export type SuggestionErrorCode =
+  'unreachable' | 'suggest-failed' | 'recipe-failed' | 'plan-failed' | 'unreadable' | 'bad-shape';
+
 /** Anything that stopped us getting suggestions, with nothing internal leaked. */
 export class SuggestionServiceError extends Error {
-  constructor(message: string) {
+  readonly code?: SuggestionErrorCode;
+
+  constructor(message: string, code?: SuggestionErrorCode) {
     super(message);
     this.name = 'SuggestionServiceError';
+    this.code = code;
   }
 }
 

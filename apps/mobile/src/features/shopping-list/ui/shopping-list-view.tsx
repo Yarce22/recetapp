@@ -2,6 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
+import type { Translate } from '@/shared/i18n/translator';
 import { EmptyState } from '@/shared/ui/controls';
 import { FadeIn, stagger } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -17,25 +19,28 @@ export type ShoppingListViewProps = {
   onToggle: (name: string) => void;
 };
 
-function describe(item: ShoppingListItem): string {
+function describe(item: ShoppingListItem, t: Translate): string {
   const parts: string[] = [];
 
-  if (item.reasons.includes('low-stock')) parts.push('running low');
-  if (item.neededFor.length > 0) parts.push(`needed for ${item.neededFor.join(', ')}`);
+  if (item.reasons.includes('low-stock')) parts.push(t('shopping.reason.low'));
+  if (item.neededFor.length > 0) {
+    parts.push(t('shopping.reason.neededFor', { dishes: item.neededFor.join(', ') }));
+  }
 
   return parts.join(' · ');
 }
 
 export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewProps) {
   const theme = useTheme();
+  const { t } = useTranslation();
 
   if (items.length === 0) {
     return (
       <EmptyState
         icon="checkmark-done"
         tone="sky"
-        title="Nothing to buy"
-        hint="Your pantry covers the week, and nothing has reached its low-stock mark."
+        title={t('shopping.empty.title')}
+        hint={t('shopping.empty.hint')}
       />
     );
   }
@@ -51,7 +56,9 @@ export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewP
             <Pressable
               accessibilityRole="checkbox"
               accessibilityState={{ checked: ticked }}
-              accessibilityLabel={`${ticked ? 'Untick' : 'Tick off'} ${item.name}`}
+              accessibilityLabel={t(ticked ? 'shopping.untick' : 'shopping.tick', {
+                name: item.name,
+              })}
               onPress={() => onToggle(item.name)}
               style={({ pressed }) => [
                 styles.row,
@@ -71,7 +78,7 @@ export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewP
                 </ThemedText>
                 {/* Why it is on the list. A bare list of words is harder to act on. */}
                 <ThemedText type="small" themeColor="textSecondary">
-                  {describe(item)}
+                  {describe(item, t)}
                 </ThemedText>
               </View>
 

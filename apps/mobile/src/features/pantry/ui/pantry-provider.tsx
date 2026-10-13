@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
+
 import type { AddPantryItemInput } from '../application/add-pantry-item';
 import { makeAddPantryItem } from '../application/add-pantry-item';
 import { makeListPantry } from '../application/list-pantry';
@@ -36,7 +38,10 @@ const PantryContext = createContext<PantryContextValue | null>(null);
 export function PantryProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<PantryEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // A flag rather than text: the message is chosen at render, in whichever
+  // language is active then.
+  const [readFailed, setReadFailed] = useState(false);
+  const { t } = useTranslation();
 
   const useCases = useMemo(() => {
     const repositoryPromise = createPantryRepository();
@@ -62,9 +67,9 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       // render before there is anything new to show.
       const next = await useCases.list();
       setEntries(next);
-      setError(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not read the pantry.');
+      setReadFailed(false);
+    } catch {
+      setReadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -81,12 +86,10 @@ export function PantryProvider({ children }: { children: ReactNode }) {
         const next = await useCases.list();
         if (!cancelled) {
           setEntries(next);
-          setError(null);
+          setReadFailed(false);
         }
-      } catch (cause) {
-        if (!cancelled) {
-          setError(cause instanceof Error ? cause.message : 'Could not read the pantry.');
-        }
+      } catch {
+        if (!cancelled) setReadFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -102,7 +105,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       entries,
       lowStock: entries.filter((entry) => isLowStock(entry.item)),
       loading,
-      error,
+      error: readFailed ? t('pantry.error.read') : null,
       refresh,
       addItem: async (input) => {
         await useCases.add(input);
@@ -117,7 +120,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
         await refresh();
       },
     }),
-    [entries, loading, error, refresh, useCases],
+    [entries, loading, readFailed, t, refresh, useCases],
   );
 
   return <PantryContext.Provider value={value}>{children}</PantryContext.Provider>;

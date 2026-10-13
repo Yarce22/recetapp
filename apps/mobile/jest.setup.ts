@@ -13,3 +13,9 @@ jest.mock('@expo/vector-icons/Ionicons', () => ({
   __esModule: true,
   default: () => null,
 }));
+
+// Screens read the safe-area insets; there is no native provider under test.
+jest.mock(
+  'react-native-safe-area-context',
+  () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
+);

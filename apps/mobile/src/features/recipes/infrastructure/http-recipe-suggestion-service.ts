@@ -1,12 +1,15 @@
-import type {
-  DishSuggestionDto,
-  MealPlanResponse,
-  PreferencesDto,
-  RecipeResponse,
-  SuggestionsResponse,
+import {
+  DEFAULT_LANGUAGE,
+  type DishSuggestionDto,
+  type Language,
+  type MealPlanResponse,
+  type PreferencesDto,
+  type RecipeResponse,
+  type SuggestionsResponse,
 } from '@recetapp/contracts';
 
 import type { PantryEntry } from '@/features/pantry/domain/pantry-repository';
+import { withLocalizedStaples } from '@/shared/i18n/staples';
 
 import {
   RateLimitedError,
@@ -25,6 +28,8 @@ export type HttpSuggestionServiceOptions = {
   /** Anonymous, stable per install. What the backend counts requests against. */
   deviceId: string;
   fetchImpl?: typeof fetch;
+  /** Language of the text the server writes. Defaults to English. */
+  language?: Language;
 };
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -64,6 +69,18 @@ export function createHttpRecipeSuggestionService(
   options: HttpSuggestionServiceOptions,
 ): RecipeSuggestionService {
   const doFetch = options.fetchImpl ?? fetch;
+  const language = options.language ?? DEFAULT_LANGUAGE;
+
+  /**
+   * Preferences as the server should see them.
+   *
+   * The staples gain their name in the active language, because the model
+   * answers in that language and the server matches ingredients by text.
+   */
+  const forServer = (preferences: PreferencesDto): PreferencesDto => ({
+    ...preferences,
+    staples: withLocalizedStaples(preferences.staples, language),
+  });
 
   return {
     async suggest(pantry: PantryEntry[], preferences: PreferencesDto): Promise<SuggestionResult> {
@@ -81,12 +98,16 @@ export function createHttpRecipeSuggestionService(
               name: entry.ingredient.displayName,
               quantity: entry.item.quantity,
             })),
-            preferences,
+            preferences: forServer(preferences),
+            language,
           }),
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
       } catch {
-        throw new SuggestionServiceError('Could not reach RecetApp. Check your connection.');
+        throw new SuggestionServiceError(
+          'Could not reach RecetApp. Check your connection.',
+          'unreachable',
+        );
       }
 
       if (response.status === 429) {
@@ -95,14 +116,17 @@ export function createHttpRecipeSuggestionService(
       }
 
       if (!response.ok) {
-        throw new SuggestionServiceError('RecetApp could not come up with dishes right now.');
+        throw new SuggestionServiceError(
+          'RecetApp could not come up with dishes right now.',
+          'suggest-failed',
+        );
       }
 
       let payload: unknown;
       try {
         payload = await response.json();
       } catch {
-        throw new SuggestionServiceError('The response could not be read.');
+        throw new SuggestionServiceError('The response could not be read.', 'unreadable');
       }
 
       const candidate = payload as Partial<SuggestionsResponse>;
@@ -110,7 +134,10 @@ export function createHttpRecipeSuggestionService(
         !Array.isArray(candidate.suggestions) ||
         !candidate.suggestions.every(looksLikeSuggestion)
       ) {
-        throw new SuggestionServiceError('The response was not in the expected shape.');
+        throw new SuggestionServiceError(
+          'The response was not in the expected shape.',
+          'bad-shape',
+        );
       }
 
       return {
@@ -135,13 +162,17 @@ export function createHttpRecipeSuggestionService(
               name: entry.ingredient.displayName,
               quantity: entry.item.quantity,
             })),
-            preferences: input.preferences,
+            preferences: forServer(input.preferences),
+            language,
             ...(input.servings === undefined ? {} : { servings: input.servings }),
           }),
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
       } catch {
-        throw new SuggestionServiceError('Could not reach RecetApp. Check your connection.');
+        throw new SuggestionServiceError(
+          'Could not reach RecetApp. Check your connection.',
+          'unreachable',
+        );
       }
 
       if (response.status === 429) {
@@ -167,19 +198,25 @@ export function createHttpRecipeSuggestionService(
       }
 
       if (!response.ok) {
-        throw new SuggestionServiceError('RecetApp could not write that recipe right now.');
+        throw new SuggestionServiceError(
+          'RecetApp could not write that recipe right now.',
+          'recipe-failed',
+        );
       }
 
       let payload: unknown;
       try {
         payload = await response.json();
       } catch {
-        throw new SuggestionServiceError('The response could not be read.');
+        throw new SuggestionServiceError('The response could not be read.', 'unreadable');
       }
 
       const candidate = payload as Partial<RecipeResponse>;
       if (!looksLikeRecipe(candidate.recipe)) {
-        throw new SuggestionServiceError('The response was not in the expected shape.');
+        throw new SuggestionServiceError(
+          'The response was not in the expected shape.',
+          'bad-shape',
+        );
       }
 
       return {
@@ -207,14 +244,18 @@ export function createHttpRecipeSuggestionService(
               name: entry.ingredient.displayName,
               quantity: entry.item.quantity,
             })),
-            preferences: input.preferences,
+            preferences: forServer(input.preferences),
             slots: input.slots,
             exclude: input.exclude,
+            language,
           }),
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
       } catch {
-        throw new SuggestionServiceError('Could not reach RecetApp. Check your connection.');
+        throw new SuggestionServiceError(
+          'Could not reach RecetApp. Check your connection.',
+          'unreachable',
+        );
       }
 
       if (response.status === 429) {
@@ -223,19 +264,25 @@ export function createHttpRecipeSuggestionService(
       }
 
       if (!response.ok) {
-        throw new SuggestionServiceError('RecetApp could not plan your week right now.');
+        throw new SuggestionServiceError(
+          'RecetApp could not plan your week right now.',
+          'plan-failed',
+        );
       }
 
       let payload: unknown;
       try {
         payload = await response.json();
       } catch {
-        throw new SuggestionServiceError('The response could not be read.');
+        throw new SuggestionServiceError('The response could not be read.', 'unreadable');
       }
 
       const candidate = payload as Partial<MealPlanResponse>;
       if (!Array.isArray(candidate.entries)) {
-        throw new SuggestionServiceError('The response was not in the expected shape.');
+        throw new SuggestionServiceError(
+          'The response was not in the expected shape.',
+          'bad-shape',
+        );
       }
 
       return {

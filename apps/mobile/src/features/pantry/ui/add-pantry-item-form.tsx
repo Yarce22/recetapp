@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { Button, controlStyles } from '@/shared/ui/controls';
 import { FadeIn } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -8,19 +9,17 @@ import { Radius, Spacing, type Tone } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
 import type { AddPantryItemInput } from '../application/add-pantry-item';
+import { InvalidIngredientError, InvalidQuantityError } from '../domain/errors';
 import type { IngredientCategory } from '../domain/ingredient';
 import { makeQuantity } from '../domain/quantity';
 import type { Unit } from '../domain/units';
 
-import { CATEGORY_STYLE } from './category-style';
+import { CATEGORY_STYLE, categoryLabel } from './category-style';
 import { ChipGroup } from './chip-group';
 
 const CATEGORIES = ['produce', 'dairy', 'meat', 'grain', 'spice', 'other'] as const;
 const UNITS = ['g', 'kg', 'ml', 'l', 'unit'] as const;
 
-const CATEGORY_LABELS = Object.fromEntries(
-  CATEGORIES.map((category) => [category, CATEGORY_STYLE[category].label]),
-) as Record<IngredientCategory, string>;
 const CATEGORY_TONES = Object.fromEntries(
   CATEGORIES.map((category) => [category, CATEGORY_STYLE[category].tone]),
 ) as Record<IngredientCategory, Tone>;
@@ -38,12 +37,20 @@ export type AddPantryItemFormProps = {
  */
 export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryItemFormProps) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [unit, setUnit] = useState<Unit>('g');
   const [category, setCategory] = useState<IngredientCategory>('other');
   const [threshold, setThreshold] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const categoryLabels = Object.fromEntries(
+    CATEGORIES.map((category) => [category, categoryLabel(t, category)]),
+  ) as Record<IngredientCategory, string>;
+  const unitLabels = Object.fromEntries(
+    UNITS.map((value) => [value, t(`unit.${value}`)]),
+  ) as Record<Unit, string>;
 
   const inputStyle = [
     controlStyles.input,
@@ -55,13 +62,13 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
 
     const parsedAmount = Number(amount.replace(',', '.'));
     if (!Number.isFinite(parsedAmount)) {
-      setError('Enter how much you have, as a number.');
+      setError(t('form.error.amount'));
       return;
     }
 
     const parsedThreshold = threshold.trim() === '' ? null : Number(threshold.replace(',', '.'));
     if (parsedThreshold !== null && !Number.isFinite(parsedThreshold)) {
-      setError('The low-stock threshold has to be a number, or left empty.');
+      setError(t('form.error.threshold'));
       return;
     }
 
@@ -76,7 +83,15 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
       setAmount('');
       setThreshold('');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not save this item.');
+      // Domain errors carry English text meant for logs; the user gets the
+      // same fact in their own language.
+      setError(
+        cause instanceof InvalidIngredientError
+          ? t('form.error.name')
+          : cause instanceof InvalidQuantityError
+            ? t('form.error.negative')
+            : t('form.error.save'),
+      );
     }
   }
 
@@ -84,54 +99,61 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
     <FadeIn distance={40} style={styles.form}>
       <View style={styles.field}>
         <ThemedText type="smallBold" themeColor="textSecondary">
-          Ingredient
+          {t('form.ingredient')}
         </ThemedText>
         <TextInput
-          accessibilityLabel="Ingredient"
+          accessibilityLabel={t('form.ingredient')}
           value={name}
           onChangeText={setName}
-          placeholder="Tomato"
+          placeholder={t('form.ingredientPlaceholder')}
           placeholderTextColor={theme.textSecondary}
           style={inputStyle}
         />
       </View>
 
       <ChipGroup
-        label="Category"
+        label={t('form.category')}
         options={CATEGORIES}
         value={category}
         onChange={setCategory}
-        labels={CATEGORY_LABELS}
+        labels={categoryLabels}
         tones={CATEGORY_TONES}
       />
 
       <View style={styles.field}>
         <ThemedText type="smallBold" themeColor="textSecondary">
-          How much
+          {t('form.amount')}
         </ThemedText>
         <TextInput
-          accessibilityLabel="How much"
+          accessibilityLabel={t('form.amount')}
           value={amount}
           onChangeText={setAmount}
-          placeholder="500"
+          placeholder={t('form.amountPlaceholder')}
           keyboardType="decimal-pad"
           placeholderTextColor={theme.textSecondary}
           style={inputStyle}
         />
       </View>
 
-      <ChipGroup label="Unit" options={UNITS} value={unit} onChange={setUnit} tones={{}} />
+      <ChipGroup
+        label={t('form.unit')}
+        options={UNITS}
+        value={unit}
+        onChange={setUnit}
+        labels={unitLabels}
+        tones={{}}
+      />
 
       <View style={[styles.reminder, { backgroundColor: theme.backgroundElement }]}>
-        <ThemedText type="smallBold">Warn me below (optional)</ThemedText>
+        <ThemedText type="smallBold">{t('form.threshold.title')}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          You get a reminder when it drops under this amount.
+          {t('form.threshold.hint')}
         </ThemedText>
         <TextInput
-          accessibilityLabel="Warn me below"
+          accessibilityLabel={t('form.threshold.label')}
           value={threshold}
           onChangeText={setThreshold}
-          placeholder="100"
+          placeholder={t('form.thresholdPlaceholder')}
           keyboardType="decimal-pad"
           placeholderTextColor={theme.textSecondary}
           style={[inputStyle, { backgroundColor: theme.warning }]}
@@ -145,7 +167,7 @@ export function AddPantryItemForm({ onSubmit, submitting = false }: AddPantryIte
       ) : null}
 
       <Button
-        label={submitting ? 'Saving...' : 'Add to pantry'}
+        label={submitting ? t('form.saving') : t('pantry.add')}
         icon="add-circle-outline"
         disabled={submitting}
         onPress={handleSubmit}

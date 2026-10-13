@@ -1,5 +1,6 @@
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
+import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { IndeterminateBar, useLoop } from '@/shared/ui/motion';
 import { Shadow, Spacing } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
@@ -10,8 +11,10 @@ import { useTheme } from '@/shared/ui/use-theme';
  * Uses the system font on purpose: it can render before the bundled fonts
  * have loaded, and iOS refuses to draw a custom family it does not know yet.
  */
-export function AppLoading({ message = 'Checking your pantry…' }: { message?: string }) {
+export function AppLoading({ message }: { message?: string }) {
   const theme = useTheme();
+  const { t } = useTranslation();
+  const shownMessage = message ?? t('loading.pantry');
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -44,14 +47,12 @@ export function AppLoading({ message = 'Checking your pantry…' }: { message?: 
         <Text style={[styles.title, { color: theme.text }]}>
           Recet<Text style={{ color: theme.mintInk }}>App</Text>
         </Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-          Cook what you already have
-        </Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{t('app.tagline')}</Text>
       </View>
 
-      <View style={styles.progress} accessibilityLabel={message}>
+      <View style={styles.progress} accessibilityLabel={shownMessage}>
         <IndeterminateBar color={theme.accent} />
-        <Text style={[styles.message, { color: theme.textSecondary }]}>{message}</Text>
+        <Text style={[styles.message, { color: theme.textSecondary }]}>{shownMessage}</Text>
       </View>
     </View>
   );
