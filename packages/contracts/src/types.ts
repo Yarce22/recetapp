@@ -5,6 +5,8 @@
  * breaks the app fails at compile time instead of at runtime on a phone.
  */
 
+import type { Language } from './language.ts';
+
 export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unit' | 'tbsp' | 'tsp' | 'cup' | 'pinch';
 
 export type Quantity = {
@@ -77,6 +79,11 @@ export type DishSuggestionDto = {
 export type SuggestionsRequest = {
   pantry: PantryEntryDto[];
   preferences: PreferencesDto;
+  /**
+   * Language of the human-readable text in the response. Machine-readable
+   * values (units, difficulty) stay English. Absent means English.
+   */
+  language?: Language;
 };
 
 export type SuggestionsResponse = {
@@ -108,6 +115,8 @@ export type RecipeRequest = {
   preferences: PreferencesDto;
   /** Defaults to whatever the recipe itself proposes. */
   servings?: number;
+  /** See `SuggestionsRequest.language`. */
+  language?: Language;
 };
 
 export type RecipeResponse = {
@@ -154,6 +163,8 @@ export type MealPlanRequest = {
   slots: { date: string; slot: MealSlot }[];
   /** Dish titles already in the week, so a regenerated day stays varied. */
   exclude: string[];
+  /** See `SuggestionsRequest.language`. */
+  language?: Language;
 };
 
 export type MealPlanResponse = {

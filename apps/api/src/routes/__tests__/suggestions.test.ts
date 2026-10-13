@@ -130,6 +130,29 @@ describe('POST /suggestions', () => {
 
     await post(app);
 
-    expect(seen).toEqual([{ pantry: ['Tomato'], preferences }]);
+    expect(seen).toEqual([{ pantry: ['Tomato'], preferences, language: 'en' }]);
+  });
+
+  it('tells the engine which language to answer in', async () => {
+    const seen: unknown[] = [];
+    const app = setup({
+      suggest: async (input) => {
+        seen.push(input);
+        return [];
+      },
+    });
+
+    const response = await post(app, { body: body({ language: 'es' }) });
+
+    expect(response.status).toBe(200);
+    expect(seen).toEqual([{ pantry: ['Tomato'], preferences, language: 'es' }]);
+  });
+
+  it('rejects a language the app does not support', async () => {
+    const app = setup(engineReturning([]));
+
+    const response = await post(app, { body: body({ language: 'fr' }) });
+
+    expect(response.status).toBe(400);
   });
 });

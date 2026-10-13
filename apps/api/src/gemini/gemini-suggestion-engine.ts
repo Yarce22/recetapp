@@ -1,4 +1,4 @@
-import type { PreferencesDto, RawDishSuggestion, RecipeDto } from '@recetapp/contracts';
+import type { Language, PreferencesDto, RawDishSuggestion, RecipeDto } from '@recetapp/contracts';
 
 import type { SuggestionEngine } from '../app.ts';
 
@@ -15,7 +15,37 @@ export type GeminiOptions = {
   fetchImpl?: typeof fetch;
 };
 
-function buildSuggestionPrompt(pantry: string[], preferences: PreferencesDto): string {
+const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', es: 'Spanish' };
+
+/**
+ * Tells the model which language the people-facing text must be in.
+ *
+ * Only prose is localized. The response schemas are identical for every
+ * language, so the enum values the app branches on (units, difficulty) must
+ * stay in English: they are identifiers, not text.
+ */
+function languageInstructions(language: Language): string[] {
+  const lines = [
+    `Write every title, summary, ingredient name and step in ${LANGUAGE_NAMES[language]}.`,
+    'Keep the JSON keys and the unit and difficulty values in English, exactly as the schema allows.',
+  ];
+
+  if (language !== 'en') {
+    // The pantry and the staples are matched against ingredient names by text,
+    // so a name the model rewords is a name the app cannot recognise.
+    lines.push(
+      'When an ingredient is in the pantry or the staples list, use its name exactly as written there.',
+    );
+  }
+
+  return lines;
+}
+
+function buildSuggestionPrompt(
+  pantry: string[],
+  preferences: PreferencesDto,
+  language: Language,
+): string {
   const rules =
     preferences.suggestionMode === 'strict'
       ? 'Use ONLY ingredients from the pantry list and the staples list. Do not introduce anything else.'
@@ -31,11 +61,17 @@ function buildSuggestionPrompt(pantry: string[], preferences: PreferencesDto): s
     '',
     rules,
     'Propose at most 8 dishes. List every ingredient each dish needs, marking as optional only what can genuinely be left out.',
+    ...languageInstructions(language),
     'Answer with JSON matching the required schema and nothing else.',
   ].join('\n');
 }
 
-function buildRecipePrompt(title: string, pantry: string[], preferences: PreferencesDto): string {
+function buildRecipePrompt(
+  title: string,
+  pantry: string[],
+  preferences: PreferencesDto,
+  language: Language,
+): string {
   return [
     `Write the full recipe for the dish titled ${JSON.stringify(title)}.`,
     '',
@@ -46,11 +82,17 @@ function buildRecipePrompt(title: string, pantry: string[], preferences: Prefere
     '',
     'Give every ingredient a numeric amount and one of the allowed units.',
     'Write the steps in the order they are performed, one action per step.',
+    ...languageInstructions(language),
     'Answer with JSON matching the required schema and nothing else.',
   ].join('\n');
 }
 
-function buildWeekPrompt(pantry: string[], preferences: PreferencesDto, count: number): string {
+function buildWeekPrompt(
+  pantry: string[],
+  preferences: PreferencesDto,
+  count: number,
+  language: Language,
+): string {
   const rules =
     preferences.suggestionMode === 'strict'
       ? 'Use ONLY ingredients from the pantry list and the staples list.'
@@ -69,6 +111,7 @@ function buildWeekPrompt(pantry: string[], preferences: PreferencesDto, count: n
     // rule both discard dishes before anything reaches a slot.
     `Propose ${Math.min(12, count + 4)} DIFFERENT dishes. Vary the main ingredient and the cooking method; do not propose the same dish twice under different names.`,
     'List every ingredient each dish needs, marking as optional only what can genuinely be left out.',
+    ...languageInstructions(language),
     'Answer with JSON matching the required schema and nothing else.',
   ].join('\n');
 }
@@ -130,25 +173,25 @@ export function createGeminiSuggestionEngine(options: GeminiOptions): Suggestion
   }
 
   return {
-    async suggest({ pantry, preferences }): Promise<RawDishSuggestion[]> {
+    async suggest({ pantry, preferences, language }): Promise<RawDishSuggestion[]> {
       const parsed = await askForJson(
-        buildSuggestionPrompt(pantry, preferences),
+        buildSuggestionPrompt(pantry, preferences, language),
         GEMINI_RESPONSE_SCHEMA,
       );
       return parseModelSuggestions(parsed);
     },
 
-    async recipe({ title, pantry, preferences }): Promise<RecipeDto> {
+    async recipe({ title, pantry, preferences, language }): Promise<RecipeDto> {
       const parsed = await askForJson(
-        buildRecipePrompt(title, pantry, preferences),
+        buildRecipePrompt(title, pantry, preferences, language),
         GEMINI_RECIPE_SCHEMA,
       );
       return parseModelRecipe(parsed);
     },
 
-    async planWeek({ pantry, preferences, count }): Promise<RawDishSuggestion[]> {
+    async planWeek({ pantry, preferences, count, language }): Promise<RawDishSuggestion[]> {
       const parsed = await askForJson(
-        buildWeekPrompt(pantry, preferences, count),
+        buildWeekPrompt(pantry, preferences, count, language),
         GEMINI_RESPONSE_SCHEMA,
       );
       return parseModelSuggestions(parsed);

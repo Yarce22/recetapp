@@ -2,12 +2,14 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import {
+  LANGUAGES,
   buildMealPlan,
   enforceSuggestionMode,
   findForbiddenIngredients,
   findMissingIngredients,
   scaleRecipe,
   suggestionIdFor,
+  type Language,
   type MealPlanResponse,
   type PreferencesDto,
   type RawDishSuggestion,
@@ -27,11 +29,16 @@ import type { RateLimiter } from './policy/rate-limit.ts';
  * API key.
  */
 export type SuggestionEngine = {
-  suggest(input: { pantry: string[]; preferences: PreferencesDto }): Promise<RawDishSuggestion[]>;
+  suggest(input: {
+    pantry: string[];
+    preferences: PreferencesDto;
+    language: Language;
+  }): Promise<RawDishSuggestion[]>;
   recipe(input: {
     title: string;
     pantry: string[];
     preferences: PreferencesDto;
+    language: Language;
   }): Promise<RecipeDto>;
   /**
    * Proposes dishes for a week. Separate from `suggest` because the ask is
@@ -41,6 +48,7 @@ export type SuggestionEngine = {
     pantry: string[];
     preferences: PreferencesDto;
     count: number;
+    language: Language;
   }): Promise<RawDishSuggestion[]>;
 };
 
@@ -61,9 +69,14 @@ const pantrySchema = z
   .array(z.object({ name: z.string().min(1).max(120), quantity: quantitySchema }))
   .max(300);
 
+// Absent means English: builds installed before the language setting existed
+// never send the field and were written for English.
+const languageSchema = z.enum(LANGUAGES).default('en');
+
 const suggestionsRequestSchema = z.object({
   pantry: pantrySchema,
   preferences: preferencesSchema,
+  language: languageSchema,
 });
 
 const recipeRequestSchema = z.object({
@@ -73,6 +86,7 @@ const recipeRequestSchema = z.object({
   // Rejected here rather than in scaleRecipe, so a bad number is a bad
   // request instead of a server error.
   servings: z.number().int().positive().max(50).optional(),
+  language: languageSchema,
 });
 
 // A calendar date, not an instant. See the meal plan rules in contracts.
@@ -87,6 +101,7 @@ const mealPlanRequestSchema = z.object({
     .min(1)
     .max(21),
   exclude: z.array(z.string().max(200)).max(50).default([]),
+  language: languageSchema,
 });
 
 /** Never leaks upstream detail: it can carry the key, the prompt, or the model's words. */
@@ -124,12 +139,12 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       });
     }
 
-    const { pantry, preferences } = parsed.data;
+    const { pantry, preferences, language } = parsed.data;
     const pantryNames = pantry.map((entry) => entry.name);
 
     let raw: RawDishSuggestion[];
     try {
-      raw = await deps.engine.suggest({ pantry: pantryNames, preferences });
+      raw = await deps.engine.suggest({ pantry: pantryNames, preferences, language });
     } catch (cause) {
       return c.json({ error: upstreamFailure(cause) }, 502);
     }
@@ -159,7 +174,7 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
     const parsed = recipeRequestSchema.safeParse(body);
     if (!parsed.success) return c.json({ error: 'invalid_request' }, 400);
 
-    const { title, pantry, preferences, servings } = parsed.data;
+    const { title, pantry, preferences, servings, language } = parsed.data;
 
     // The service keeps no record of which dish an id referred to, so the id
     // and the title have to agree with each other or the request is incoherent.
@@ -178,7 +193,7 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
 
     let recipe: RecipeDto;
     try {
-      recipe = await deps.engine.recipe({ title, pantry: pantryNames, preferences });
+      recipe = await deps.engine.recipe({ title, pantry: pantryNames, preferences, language });
     } catch (cause) {
       return c.json({ error: upstreamFailure(cause) }, 502);
     }
@@ -230,7 +245,7 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       });
     }
 
-    const { pantry, preferences, slots, exclude } = parsed.data;
+    const { pantry, preferences, slots, exclude, language } = parsed.data;
     const pantryNames = pantry.map((entry) => entry.name);
 
     let proposals: RawDishSuggestion[];
@@ -242,6 +257,7 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
         pantry: pantryNames,
         preferences,
         count: slots.length,
+        language,
       });
     } catch (cause) {
       return c.json({ error: upstreamFailure(cause) }, 502);
