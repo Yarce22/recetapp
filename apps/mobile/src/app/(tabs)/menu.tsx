@@ -10,6 +10,7 @@ import { makeGetWeek } from '@/features/meal-plan/application/get-week';
 import { makeRegenerateDay } from '@/features/meal-plan/application/regenerate-day';
 import { createMealPlanRepository } from '@/features/meal-plan/infrastructure/create-meal-plan-repository';
 import { WeeklyGrid } from '@/features/meal-plan/ui/weekly-grid';
+import { useRefetchOnRemoteChange } from '@/features/household/ui/use-refetch-on-remote-change';
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
@@ -95,6 +96,9 @@ export default function MenuScreen() {
       cancelled = true;
     };
   }, [repositoryPromise, weekStartDate]);
+
+  // Menu changes made by the household land in the local plan underneath us.
+  useRefetchOnRemoteChange(reload);
 
   const describeFailure = useCallback(
     (cause: unknown) => describeServiceError(cause, t, 'menu.error.generic'),

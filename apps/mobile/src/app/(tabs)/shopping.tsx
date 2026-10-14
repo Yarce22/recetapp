@@ -1,17 +1,19 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 
 import { startOfWeek, type MealPlanEntryDto } from '@recetapp/contracts';
 
 import { makeGetWeek } from '@/features/meal-plan/application/get-week';
 import { createMealPlanRepository } from '@/features/meal-plan/infrastructure/create-meal-plan-repository';
+import { useRefetchOnRemoteChange } from '@/features/household/ui/use-refetch-on-remote-change';
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
 import { buildShoppingList } from '@/features/shopping-list/domain/build-shopping-list';
 import { planLowStockReminder } from '@/features/shopping-list/domain/plan-low-stock-reminder';
 import { createNotificationScheduler } from '@/features/shopping-list/infrastructure/expo-notification-scheduler';
 import { ShoppingListView } from '@/features/shopping-list/ui/shopping-list-view';
+import { useShoppingChecks } from '@/features/shopping-list/ui/use-shopping-checks';
 import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { withAllLocalizedStaples } from '@/shared/i18n/staples';
 import { Screen, ScreenHeader } from '@/shared/ui/controls';
@@ -42,17 +44,21 @@ export default function ShoppingScreen() {
   const weekStartDate = useMemo(() => startOfWeek(todayIsoDate()), []);
   const [planEntries, setPlanEntries] = useState<MealPlanEntryDto[]>([]);
   const [loading, setLoading] = useState(true);
-  // Session-local: the list is derived from the pantry and the plan, so a
-  // stored tick would outlive the item it was about.
-  const [checked, setChecked] = useState<Set<string>>(new Set());
+  // The ticks go through the shared checks repository, so a household sees
+  // the same ones on every phone.
+  const { loaded: checksLoaded, isChecked, toggle } = useShoppingChecks();
+
+  const loadPlan = useCallback(async () => {
+    const repository = await createMealPlanRepository();
+    return makeGetWeek(repository)(weekStartDate);
+  }, [weekStartDate]);
 
   useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       try {
-        const repository = await createMealPlanRepository();
-        const week = await makeGetWeek(repository)(weekStartDate);
+        const week = await loadPlan();
         if (!cancelled) setPlanEntries(week);
       } finally {
         if (!cancelled) setLoading(false);
@@ -62,7 +68,10 @@ export default function ShoppingScreen() {
     return () => {
       cancelled = true;
     };
-  }, [weekStartDate]);
+  }, [loadPlan]);
+
+  // Menu changes made by the household land in the local plan underneath us.
+  useRefetchOnRemoteChange(async () => setPlanEntries(await loadPlan()));
 
   const items = useMemo(
     () =>
@@ -85,26 +94,18 @@ export default function ShoppingScreen() {
     );
   }, [pantry, pantryLoading, t]);
 
-  function toggle(name: string) {
-    setChecked((current) => {
-      const next = new Set(current);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-  }
-
-  const done = items.filter((item) => checked.has(item.name)).length;
+  const checked = useMemo(
+    () => new Set(items.filter((item) => isChecked(item.name)).map((item) => item.name)),
+    [items, isChecked],
+  );
+  const done = checked.size;
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.scroll}>
         <ScreenHeader title={t('shopping.title')} />
 
-        {loading || pantryLoading ? (
+        {loading || pantryLoading || !checksLoaded ? (
           <View style={styles.skeletons}>
             <Skeleton height={120} radius={Radius.xxl - 4} />
             {[0, 1, 2, 3].map((index) => (
@@ -135,7 +136,11 @@ export default function ShoppingScreen() {
                 </View>
               </FadeIn>
             ) : null}
-            <ShoppingListView items={items} checked={checked} onToggle={toggle} />
+            <ShoppingListView
+              items={items}
+              checked={checked}
+              onToggle={(name) => void toggle(name)}
+            />
           </>
         )}
       </ScrollView>

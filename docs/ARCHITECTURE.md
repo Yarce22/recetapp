@@ -37,6 +37,10 @@ Trade-off accepted: no multi-device sync in the MVP. Because persistence sits
 behind a repository port (section 4), adding a remote sync adapter later does
 not require touching features.
 
+That door has since been used, opt-in: shared households (two or more people on
+one pantry, menu and shopping list) sync through Supabase while SQLite stays the
+source of truth. Solo mode is unchanged. See [SHARING.md](SHARING.md).
+
 Consequence to handle: with no accounts, abuse control on the BFF is based on
 an anonymous device identifier plus a server-side global quota. This is weaker
 than authenticated quotas and is a deliberate MVP trade-off.

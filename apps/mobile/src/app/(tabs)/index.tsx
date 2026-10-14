@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { IngredientCategory } from '@/features/pantry/domain/ingredient';
 import { isLowStock } from '@/features/pantry/domain/pantry-item';
 import { CATEGORY_STYLE, categoryLabel } from '@/features/pantry/ui/category-style';
+import { HouseholdEntryButton } from '@/features/household/ui/household-entry-button';
 import { PantryList } from '@/features/pantry/ui/pantry-list';
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { useTranslation } from '@/shared/i18n/i18n-provider';
@@ -100,14 +101,18 @@ export default function PantryScreen() {
         eyebrow={t('pantry.eyebrow')}
         title={t('pantry.title')}
         action={
-          // The language lives here, quietly: it is chosen once and rarely
-          // changed, so it should not compete with the pantry for attention.
-          <IconButton
-            icon="language-outline"
-            accessibilityLabel={t('language.change')}
-            onPress={() => router.push('/language')}
-            size={40}
-          />
+          // Language and sharing live here, quietly: neither is used often
+          // enough to compete with the pantry for attention. The sharing button
+          // renders nothing where sharing is unavailable.
+          <View style={styles.headerActions}>
+            <HouseholdEntryButton onPress={() => router.push('/household')} />
+            <IconButton
+              icon="language-outline"
+              accessibilityLabel={t('language.change')}
+              onPress={() => router.push('/language')}
+              size={40}
+            />
+          </View>
         }
       />
 
@@ -152,6 +157,7 @@ export default function PantryScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   listHeader: { gap: Spacing.three, paddingBottom: Spacing.three },
   banner: {
     flexDirection: 'row',

@@ -77,6 +77,41 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE meal_plan_entries ADD COLUMN ingredients TEXT NOT NULL DEFAULT '[]'`,
     ],
   },
+  {
+    version: 5,
+    statements: [
+      // Shopping list ticks. The list itself is derived from the pantry and the
+      // plan; only the ticked items are stored, so a household can share them.
+      // item_key is the normalized ingredient name.
+      `CREATE TABLE IF NOT EXISTS shopping_checks (
+        item_key TEXT PRIMARY KEY NOT NULL,
+        name     TEXT NOT NULL
+      )`,
+      // Sharing bookkeeping. All three stay empty (and cost nothing) in solo
+      // mode. The outbox holds at most one pending change per record.
+      `CREATE TABLE IF NOT EXISTS sync_outbox (
+        entity  TEXT NOT NULL,
+        key     TEXT NOT NULL,
+        op      TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        rev     INTEGER NOT NULL,
+        PRIMARY KEY (entity, key)
+      )`,
+      // The last server version of each record merged into this device.
+      `CREATE TABLE IF NOT EXISTS sync_meta (
+        entity     TEXT NOT NULL,
+        key        TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted    INTEGER NOT NULL,
+        PRIMARY KEY (entity, key)
+      )`,
+      // Pull cursors and one-off flags.
+      `CREATE TABLE IF NOT EXISTS sync_state (
+        name  TEXT PRIMARY KEY NOT NULL,
+        value TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
 
 /**

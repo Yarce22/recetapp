@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { useRefetchOnRemoteChange } from '@/features/household/ui/use-refetch-on-remote-change';
 import { useTranslation } from '@/shared/i18n/i18n-provider';
 
 import type { AddPantryItemInput } from '../application/add-pantry-item';
@@ -99,6 +100,9 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [useCases]);
+
+  // Household members edit the same table from other phones; show it when it lands.
+  useRefetchOnRemoteChange(refresh);
 
   const value = useMemo<PantryContextValue>(
     () => ({

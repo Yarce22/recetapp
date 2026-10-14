@@ -21,6 +21,10 @@ export class InMemoryMealPlanRepository implements MealPlanRepository {
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
+  async findAll(): Promise<MealPlanEntryDto[]> {
+    return [...this.entries.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   async upsertMany(entries: MealPlanEntryDto[]): Promise<void> {
     for (const entry of entries) {
       this.entries.set(this.key(entry.date, entry.slot), entry);

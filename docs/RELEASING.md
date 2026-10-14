@@ -61,6 +61,13 @@ That variable is compiled into the bundle and readable by anyone who unpacks
 it. That is fine for a base URL, and it is exactly why the Gemini key is not
 kept there. See [the architecture](ARCHITECTURE.md).
 
+## Enabling shared households
+
+Sharing needs `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_KEY` (the
+publishable key) in the environment of the build or update. Without them the
+feature is off and the app behaves as before. It adds no native module, so it
+ships through `eas update`. Setup: [supabase/README.md](../supabase/README.md).
+
 ## Submitting
 
 ```bash

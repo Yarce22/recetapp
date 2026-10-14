@@ -1,4 +1,9 @@
-import { type MigrationDb, type Migration, runMigrations } from '@/shared/db/migrations';
+import {
+  MIGRATIONS,
+  type MigrationDb,
+  type Migration,
+  runMigrations,
+} from '@/shared/db/migrations';
 
 function fakeDb(startingVersion = 0) {
   const executed: string[] = [];
@@ -17,6 +22,23 @@ function fakeDb(startingVersion = 0) {
 
   return { db, executed, currentVersion: () => version };
 }
+
+describe('shipped migrations', () => {
+  it('number strictly upwards and never repeat a version', () => {
+    const versions = MIGRATIONS.map((migration) => migration.version);
+
+    expect(versions).toEqual([...versions].sort((a, b) => a - b));
+    expect(new Set(versions).size).toBe(versions.length);
+  });
+
+  it('create the shopping ticks and the sync bookkeeping tables in version 5', () => {
+    const sql = MIGRATIONS.find((migration) => migration.version === 5)?.statements.join('\n');
+
+    for (const table of ['shopping_checks', 'sync_outbox', 'sync_meta', 'sync_state']) {
+      expect(sql).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
+    }
+  });
+});
 
 const migrations: Migration[] = [
   { version: 1, statements: ['CREATE TABLE a (id TEXT)'] },

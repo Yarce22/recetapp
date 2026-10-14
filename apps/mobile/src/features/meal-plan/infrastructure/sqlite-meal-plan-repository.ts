@@ -34,6 +34,18 @@ function parseIngredients(raw: string): string[] {
   }
 }
 
+function rowToEntry(row: MealPlanRow): MealPlanEntryDto {
+  return {
+    date: row.date,
+    slot: row.slot as MealSlot,
+    dishId: row.dish_id,
+    dishTitle: row.dish_title,
+    summary: row.summary,
+    ingredients: parseIngredients(row.ingredients),
+  };
+}
+
+const SELECT_ALL = 'SELECT * FROM meal_plan_entries ORDER BY date, slot';
 const SELECT_WEEK =
   'SELECT * FROM meal_plan_entries WHERE date BETWEEN ? AND ? ORDER BY date, slot';
 const DELETE_ONE = 'DELETE FROM meal_plan_entries WHERE date = ? AND slot = ?';
@@ -55,15 +67,12 @@ export class SqliteMealPlanRepository implements MealPlanRepository {
     const days = weekDates(weekStartDate);
     // ISO dates sort and compare as text, which is the point of the format.
     const rows = await this.db.getAllAsync<MealPlanRow>(SELECT_WEEK, [days[0], days[6]]);
+    return rows.map(rowToEntry);
+  }
 
-    return rows.map((row) => ({
-      date: row.date,
-      slot: row.slot as MealSlot,
-      dishId: row.dish_id,
-      dishTitle: row.dish_title,
-      summary: row.summary,
-      ingredients: parseIngredients(row.ingredients),
-    }));
+  async findAll(): Promise<MealPlanEntryDto[]> {
+    const rows = await this.db.getAllAsync<MealPlanRow>(SELECT_ALL);
+    return rows.map(rowToEntry);
   }
 
   async upsertMany(entries: MealPlanEntryDto[]): Promise<void> {
