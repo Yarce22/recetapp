@@ -33,7 +33,7 @@ export function loadEnv(): Env {
 
   return {
     geminiApiKey,
-    geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-2.0-flash',
+    geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-3.1-flash-lite',
     port: intFromEnv('PORT', 8787),
     perDevicePerHour: intFromEnv('RATE_LIMIT_PER_DEVICE_PER_HOUR', 30),
     globalPerHour: intFromEnv('RATE_LIMIT_GLOBAL_PER_HOUR', 500),
