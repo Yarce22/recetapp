@@ -199,6 +199,10 @@ export const es: Record<MessageKey, string> = {
   'recipe.ingredients': 'Ingredientes',
   'recipe.optional': '{name} (opcional)',
   'recipe.steps': 'Pasos',
+  'recipe.cook': 'Receta preparada',
+  'recipe.cooked': 'Despensa actualizada con lo que usaste.',
+  'recipe.notUpdated': 'Sin actualizar: {items}.',
+  'recipe.cookFailed': 'No se pudo actualizar tu despensa. Intenta de nuevo.',
 
   'reminder.title': 'Hora de reponer',
   'reminder.body_one': '{subject} se está acabando.',

@@ -6,6 +6,8 @@ import { useTranslation } from '@/shared/i18n/i18n-provider';
 
 import type { AddPantryItemInput } from '../application/add-pantry-item';
 import { makeAddPantryItem } from '../application/add-pantry-item';
+import { makeCookRecipe } from '../application/cook-recipe';
+import type { CookRecipeInput, CookRecipeResult } from '../application/cook-recipe';
 import { makeListPantry } from '../application/list-pantry';
 import { makeRemovePantryItem } from '../application/remove-pantry-item';
 import { makeUpdatePantryQuantity } from '../application/update-pantry-quantity';
@@ -24,6 +26,7 @@ type PantryContextValue = {
   addItem: (input: AddPantryItemInput) => Promise<void>;
   updateQuantity: (ingredientId: IngredientId, quantity: Quantity) => Promise<void>;
   removeItem: (ingredientId: IngredientId) => Promise<void>;
+  cookRecipe: (input: CookRecipeInput) => Promise<CookRecipeResult>;
 };
 
 const PantryContext = createContext<PantryContextValue | null>(null);
@@ -58,6 +61,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       add: withRepository<AddPantryItemInput, PantryEntry>(makeAddPantryItem),
       update: withRepository(makeUpdatePantryQuantity),
       remove: withRepository(makeRemovePantryItem),
+      cook: withRepository<CookRecipeInput, CookRecipeResult>(makeCookRecipe),
     };
   }, []);
 
@@ -122,6 +126,11 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       removeItem: async (ingredientId) => {
         await useCases.remove({ ingredientId });
         await refresh();
+      },
+      cookRecipe: async (input) => {
+        const result = await useCases.cook(input);
+        await refresh();
+        return result;
       },
     }),
     [entries, loading, readFailed, t, refresh, useCases],

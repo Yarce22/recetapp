@@ -8,7 +8,7 @@ import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
 import { describeServiceError } from '@/features/recipes/ui/describe-service-error';
-import { RecipeDetail } from '@/features/recipes/ui/recipe-detail';
+import { RecipeDetail, type CookStatus } from '@/features/recipes/ui/recipe-detail';
 import { API_BASE_URL } from '@/shared/config/api';
 import { useI18n } from '@/shared/i18n/i18n-provider';
 import { EmptyState } from '@/shared/ui/controls';
@@ -24,7 +24,7 @@ export default function RecipeDetailScreen() {
   const { id, title } = useLocalSearchParams<{ id: string; title?: string }>();
   const theme = useTheme();
   const { t, language } = useI18n();
-  const { entries } = usePantry();
+  const { entries, cookRecipe } = usePantry();
   const { preferences, deviceId } = usePreferences();
 
   const [recipe, setRecipe] = useState<RecipeDto | null>(null);
@@ -32,6 +32,31 @@ export default function RecipeDetailScreen() {
   const [servings, setServings] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cookStatus, setCookStatus] = useState<CookStatus>('idle');
+  const [notUpdated, setNotUpdated] = useState<string[]>([]);
+
+  // Cooking is tied to the recipe on screen: new servings mean new amounts, so
+  // the previous "prepared" state no longer describes what is shown.
+  const changeServings = (next: number) => {
+    setCookStatus('idle');
+    setNotUpdated([]);
+    setServings(next);
+  };
+
+  const cook = async () => {
+    if (!recipe || cookStatus !== 'idle') return;
+    setCookStatus('cooking');
+    try {
+      const result = await cookRecipe({
+        ingredients: recipe.ingredients.map(({ name, quantity }) => ({ name, quantity })),
+      });
+      setNotUpdated(result.skipped.map((line) => line.name));
+      setCookStatus('done');
+    } catch {
+      setCookStatus('idle');
+      setError(t('recipe.cookFailed'));
+    }
+  };
 
   const service = useMemo(
     () =>
@@ -126,7 +151,10 @@ export default function RecipeDetailScreen() {
           <RecipeDetail
             recipe={recipe}
             missingIngredients={missing}
-            onServingsChange={setServings}
+            onServingsChange={changeServings}
+            cookStatus={cookStatus}
+            notUpdated={notUpdated}
+            onCook={() => void cook()}
           />
         </>
       ) : null}

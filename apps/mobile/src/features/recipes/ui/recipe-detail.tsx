@@ -5,6 +5,7 @@ import { normalizeIngredientName, type RecipeDto } from '@recetapp/contracts';
 
 import { formatQuantity } from '@/features/pantry/ui/format-quantity';
 import { useTranslation } from '@/shared/i18n/i18n-provider';
+import { Button } from '@/shared/ui/controls';
 import { FadeIn, stagger, useLoop } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Radius, Shadow, Spacing } from '@/shared/ui/theme';
@@ -14,9 +15,22 @@ export type RecipeDetailProps = {
   recipe: RecipeDto;
   missingIngredients: string[];
   onServingsChange: (servings: number) => void;
+  cookStatus: CookStatus;
+  /** Ingredients the pantry could not be updated for, shown once cooked. */
+  notUpdated: string[];
+  onCook: () => void;
 };
 
-export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: RecipeDetailProps) {
+export type CookStatus = 'idle' | 'cooking' | 'done';
+
+export function RecipeDetail({
+  recipe,
+  missingIngredients,
+  onServingsChange,
+  cookStatus,
+  notUpdated,
+  onCook,
+}: RecipeDetailProps) {
   const theme = useTheme();
   const translator = useTranslation();
   const { t } = translator;
@@ -158,6 +172,27 @@ export function RecipeDetail({ recipe, missingIngredients, onServingsChange }: R
               </ThemedText>
             </View>
           ))}
+        </FadeIn>
+
+        <FadeIn delay={300} style={styles.section}>
+          {cookStatus === 'done' ? (
+            <View style={[styles.notice, { backgroundColor: theme.mint }]}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={theme.mintInk} />
+              <ThemedText type="small" style={[styles.flex, { color: theme.mintInk }]}>
+                {t('recipe.cooked')}
+                {notUpdated.length > 0
+                  ? ` ${t('recipe.notUpdated', { items: notUpdated.join(', ') })}`
+                  : ''}
+              </ThemedText>
+            </View>
+          ) : (
+            <Button
+              label={t('recipe.cook')}
+              icon="restaurant-outline"
+              disabled={cookStatus === 'cooking'}
+              onPress={onCook}
+            />
+          )}
         </FadeIn>
       </View>
     </ScrollView>

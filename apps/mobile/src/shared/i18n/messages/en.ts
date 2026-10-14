@@ -199,6 +199,10 @@ export const en = {
   'recipe.ingredients': 'Ingredients',
   'recipe.optional': '{name} (optional)',
   'recipe.steps': 'Steps',
+  'recipe.cook': 'Recipe cooked',
+  'recipe.cooked': 'Pantry updated with what you used.',
+  'recipe.notUpdated': 'Not updated: {items}.',
+  'recipe.cookFailed': 'Could not update your pantry. Try again.',
 
   'reminder.title': 'Time to restock',
   'reminder.body_one': '{subject} is running low.',

@@ -37,10 +37,19 @@ describe('RecipeDetail in Spanish', () => {
         recipe={recipe}
         missingIngredients={missingIngredients}
         onServingsChange={jest.fn()}
+        cookStatus="idle"
+        notUpdated={[]}
+        onCook={jest.fn()}
       />,
       'es',
     );
   }
+
+  it('labels the cooked button in Spanish', async () => {
+    await renderDetail();
+
+    expect(screen.getByText('Receta preparada')).toBeTruthy();
+  });
 
   it('translates the headings and keeps the generated text as it came', async () => {
     await renderDetail();

@@ -23,6 +23,9 @@ function renderDetail(props: Partial<React.ComponentProps<typeof RecipeDetail>> 
       recipe={recipe}
       missingIngredients={[]}
       onServingsChange={jest.fn()}
+      cookStatus="idle"
+      notUpdated={[]}
+      onCook={jest.fn()}
       {...props}
     />,
   );
@@ -82,6 +85,28 @@ describe('RecipeDetail', () => {
     fireEvent.press(screen.getByLabelText('Fewer servings'));
 
     expect(onServingsChange).toHaveBeenCalledWith(1);
+  });
+
+  it('offers a way to mark the recipe as cooked', () => {
+    const onCook = jest.fn();
+    renderDetail({ onCook });
+
+    fireEvent.press(screen.getByText('Recipe cooked'));
+
+    expect(onCook).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirms the pantry was updated and removes the button once cooked', () => {
+    renderDetail({ cookStatus: 'done' });
+
+    expect(screen.getByText(/pantry updated/i)).toBeTruthy();
+    expect(screen.queryByText('Recipe cooked')).toBeNull();
+  });
+
+  it('names the ingredients that could not be deducted', () => {
+    renderDetail({ cookStatus: 'done', notUpdated: ['basil'] });
+
+    expect(screen.getByText(/not updated: basil/i)).toBeTruthy();
   });
 
   it('never offers to go below one serving', () => {
