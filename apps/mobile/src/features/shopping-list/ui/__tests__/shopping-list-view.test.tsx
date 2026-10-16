@@ -5,7 +5,6 @@ import { ShoppingListView } from '@/features/shopping-list/ui/shopping-list-view
 
 const item = (overrides: Partial<ShoppingListItem> = {}): ShoppingListItem => ({
   name: 'pasta',
-  reasons: ['missing-for-plan'],
   neededFor: ['Pasta night'],
   ...overrides,
 });
@@ -27,23 +26,6 @@ describe('ShoppingListView', () => {
     renderView();
 
     expect(screen.getByText(/needed for Pasta night/i)).toBeTruthy();
-  });
-
-  it('says when something is simply running low', () => {
-    renderView({ items: [item({ name: 'Flour', reasons: ['low-stock'], neededFor: [] })] });
-
-    expect(screen.getByText(/running low/i)).toBeTruthy();
-  });
-
-  it('shows both reasons when both apply', () => {
-    renderView({
-      items: [
-        item({ name: 'Tomato', reasons: ['low-stock', 'missing-for-plan'], neededFor: ['Stew'] }),
-      ],
-    });
-
-    expect(screen.getByText(/running low/i)).toBeTruthy();
-    expect(screen.getByText(/needed for Stew/i)).toBeTruthy();
   });
 
   it('names every dish that needs it, not just the first', () => {

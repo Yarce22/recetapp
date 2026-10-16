@@ -167,15 +167,14 @@ export const es: Record<MessageKey, string> = {
   'grid.empty': 'Nada planificado',
 
   'shopping.title': 'Compras',
-  'shopping.summary': 'Lo que se está acabando, más lo que necesita el menú de esta semana.',
+  'shopping.summary': 'Lo que necesita el menú de esta semana y tu despensa no cubre.',
   'shopping.progress': '{done} de {total} en el carrito',
   'shopping.progressLabel': 'Elementos marcados',
-  'shopping.reason.low': 'se está acabando',
   'shopping.reason.neededFor': 'necesario para {dishes}',
   'shopping.tick': 'Marcar {name}',
   'shopping.untick': 'Desmarcar {name}',
   'shopping.empty.title': 'Nada que comprar',
-  'shopping.empty.hint': 'Tu despensa cubre la semana y nada ha llegado a su límite de poco stock.',
+  'shopping.empty.hint': 'Tu despensa cubre el menú de esta semana.',
 
   'recipe.none.title': 'No hay receta aquí',
   'recipe.none.hint': 'Abre esta receta desde la pestaña Descubrir.',

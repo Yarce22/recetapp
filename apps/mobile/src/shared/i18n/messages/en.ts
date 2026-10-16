@@ -167,15 +167,14 @@ export const en = {
   'grid.empty': 'Nothing planned',
 
   'shopping.title': 'Shopping',
-  'shopping.summary': "What is running low, plus what this week's menu needs.",
+  'shopping.summary': "What this week's menu needs and your pantry does not cover.",
   'shopping.progress': '{done} of {total} in the cart',
   'shopping.progressLabel': 'Items ticked off',
-  'shopping.reason.low': 'running low',
   'shopping.reason.neededFor': 'needed for {dishes}',
   'shopping.tick': 'Tick off {name}',
   'shopping.untick': 'Untick {name}',
   'shopping.empty.title': 'Nothing to buy',
-  'shopping.empty.hint': 'Your pantry covers the week, and nothing has reached its low-stock mark.',
+  'shopping.empty.hint': "Your pantry covers this week's menu.",
 
   'recipe.none.title': 'No recipe here',
   'recipe.none.hint': 'Open this recipe from the Discover tab.',

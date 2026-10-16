@@ -6,7 +6,6 @@ import { renderInLanguage } from '@/shared/i18n/testing/render-in-language';
 
 const item = (overrides: Partial<ShoppingListItem> = {}): ShoppingListItem => ({
   name: 'pasta',
-  reasons: ['missing-for-plan'],
   neededFor: ['Noche de pasta'],
   ...overrides,
 });
@@ -15,14 +14,14 @@ describe('ShoppingListView in Spanish', () => {
   it('says why an item is on the list', async () => {
     await renderInLanguage(
       <ShoppingListView
-        items={[item({ reasons: ['low-stock', 'missing-for-plan'] })]}
+        items={[item()]}
         checked={new Set()}
         onToggle={jest.fn()}
       />,
       'es',
     );
 
-    expect(screen.getByText('se está acabando · necesario para Noche de pasta')).toBeTruthy();
+    expect(screen.getByText('necesario para Noche de pasta')).toBeTruthy();
   });
 
   it('labels the checkbox for a screen reader in both states', async () => {

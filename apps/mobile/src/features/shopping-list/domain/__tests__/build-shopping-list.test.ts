@@ -33,7 +33,7 @@ function planEntry(dishTitle: string, ingredients: string[]): MealPlanEntryDto {
 const preferences = { ...DEFAULT_PREFERENCES, staples: ['salt', 'water'] };
 
 describe('buildShoppingList', () => {
-  it('is empty when nothing is low and the week needs nothing new', () => {
+  it('is empty when the pantry covers everything the week needs', () => {
     const list = buildShoppingList({
       pantry: [pantryEntry('Tomato', 500, 100)],
       planEntries: [planEntry('Tomato salad', ['tomato'])],
@@ -43,21 +43,9 @@ describe('buildShoppingList', () => {
     expect(list).toEqual([]);
   });
 
-  it('lists an ingredient that has run low', () => {
+  it('is empty when no menu is planned, even if the pantry is running low', () => {
     const list = buildShoppingList({
       pantry: [pantryEntry('Flour', 50, 500)],
-      planEntries: [],
-      preferences,
-    });
-
-    expect(list).toHaveLength(1);
-    expect(list[0].name).toBe('Flour');
-    expect(list[0].reasons).toEqual(['low-stock']);
-  });
-
-  it('ignores an item with no threshold, since the user never asked to be warned', () => {
-    const list = buildShoppingList({
-      pantry: [pantryEntry('Flour', 1, null)],
       planEntries: [],
       preferences,
     });
@@ -72,9 +60,27 @@ describe('buildShoppingList', () => {
       preferences,
     });
 
-    expect(list).toHaveLength(1);
-    expect(list[0].name).toBe('pasta');
-    expect(list[0].reasons).toEqual(['missing-for-plan']);
+    expect(list).toEqual([{ name: 'pasta', neededFor: ['Pasta'] }]);
+  });
+
+  it('ignores a low item the menu does not use', () => {
+    const list = buildShoppingList({
+      pantry: [pantryEntry('Flour', 10, 500)],
+      planEntries: [planEntry('Pasta', ['pasta'])],
+      preferences,
+    });
+
+    expect(list.map((item) => item.name)).toEqual(['pasta']);
+  });
+
+  it('lists a planned ingredient the pantry holds but has run low on', () => {
+    const list = buildShoppingList({
+      pantry: [pantryEntry('Tomato', 50, 500)],
+      planEntries: [planEntry('Pasta', ['tomato'])],
+      preferences,
+    });
+
+    expect(list).toEqual([{ name: 'Tomato', neededFor: ['Pasta'] }]);
   });
 
   it('never asks you to buy a staple you said is always there', () => {
@@ -107,18 +113,6 @@ describe('buildShoppingList', () => {
     expect(list[0].neededFor).toEqual(['Pasta']);
   });
 
-  it('gives both reasons when something is low and the week also needs it', () => {
-    const list = buildShoppingList({
-      pantry: [pantryEntry('Tomato', 50, 500)],
-      planEntries: [planEntry('Pasta', ['tomato'])],
-      preferences,
-    });
-
-    expect(list).toHaveLength(1);
-    expect(list[0].reasons).toEqual(['low-stock']);
-    expect(list[0].neededFor).toEqual(['Pasta']);
-  });
-
   it('matches across spellings, so an accent does not create a second row', () => {
     const list = buildShoppingList({
       pantry: [pantryEntry('Limón', 10, 100)],
@@ -130,17 +124,7 @@ describe('buildShoppingList', () => {
     expect(list[0].name).toBe('Limón');
   });
 
-  it('puts what the week is missing above what is merely running low', () => {
-    const list = buildShoppingList({
-      pantry: [pantryEntry('Flour', 10, 500)],
-      planEntries: [planEntry('Pasta', ['pasta'])],
-      preferences,
-    });
-
-    expect(list.map((item) => item.name)).toEqual(['pasta', 'Flour']);
-  });
-
-  it('sorts alphabetically inside each group, so the list is stable', () => {
+  it('sorts alphabetically, so the list is stable', () => {
     const list = buildShoppingList({
       pantry: [],
       planEntries: [planEntry('Stew', ['onion', 'beef', 'carrot'])],

@@ -20,14 +20,7 @@ export type ShoppingListViewProps = {
 };
 
 function describe(item: ShoppingListItem, t: Translate): string {
-  const parts: string[] = [];
-
-  if (item.reasons.includes('low-stock')) parts.push(t('shopping.reason.low'));
-  if (item.neededFor.length > 0) {
-    parts.push(t('shopping.reason.neededFor', { dishes: item.neededFor.join(', ') }));
-  }
-
-  return parts.join(' · ');
+  return t('shopping.reason.neededFor', { dishes: item.neededFor.join(', ') });
 }
 
 export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewProps) {
@@ -49,7 +42,6 @@ export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewP
     <View style={styles.list}>
       {items.map((item, index) => {
         const ticked = checked.has(item.name);
-        const low = item.reasons.includes('low-stock');
 
         return (
           <FadeIn key={item.name} delay={stagger(index, 50)}>
@@ -76,16 +68,11 @@ export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewP
                 >
                   {item.name}
                 </ThemedText>
-                {/* Why it is on the list. A bare list of words is harder to act on. */}
+                {/* Which dishes want it. A bare list of words is harder to act on. */}
                 <ThemedText type="small" themeColor="textSecondary">
                   {describe(item, t)}
                 </ThemedText>
               </View>
-
-              <View
-                style={[styles.dot, { backgroundColor: low ? theme.coral : theme.blue }]}
-                accessibilityElementsHidden
-              />
             </Pressable>
           </FadeIn>
         );
@@ -146,5 +133,4 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: Spacing.half },
   name: { fontSize: 15 },
   struck: { textDecorationLine: 'line-through' },
-  dot: { width: 10, height: 10, borderRadius: 5 },
 });
