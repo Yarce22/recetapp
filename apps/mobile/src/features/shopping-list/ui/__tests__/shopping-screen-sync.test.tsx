@@ -17,6 +17,12 @@ jest.mock('@/features/meal-plan/infrastructure/create-meal-plan-repository', () 
 jest.mock('../../infrastructure/create-shopping-checks-repository', () => ({
   createShoppingChecksRepository: jest.fn(async () => mockChecks.current),
 }));
+jest.mock('@/shared/settings/create-settings-repository', () => {
+  const { InMemorySettingsRepository } = jest.requireActual(
+    '@/shared/settings/in-memory-settings-repository',
+  );
+  return { createSettingsRepository: jest.fn(async () => new InMemorySettingsRepository()) };
+});
 jest.mock('../../infrastructure/expo-notification-scheduler', () => ({
   createNotificationScheduler: () => ({ scheduleLowStockReminder: jest.fn(async () => undefined) }),
 }));

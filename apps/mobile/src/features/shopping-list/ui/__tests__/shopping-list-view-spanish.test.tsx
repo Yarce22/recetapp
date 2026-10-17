@@ -24,6 +24,19 @@ describe('ShoppingListView in Spanish', () => {
     expect(screen.getByText('necesario para Noche de pasta')).toBeTruthy();
   });
 
+  it('says when something is simply running low', async () => {
+    await renderInLanguage(
+      <ShoppingListView
+        items={[item({ name: 'harina', neededFor: [] })]}
+        checked={new Set()}
+        onToggle={jest.fn()}
+      />,
+      'es',
+    );
+
+    expect(screen.getByText('se está acabando')).toBeTruthy();
+  });
+
   it('labels the checkbox for a screen reader in both states', async () => {
     const onToggle = jest.fn();
     await renderInLanguage(

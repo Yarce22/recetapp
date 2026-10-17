@@ -11,19 +11,28 @@ import { Radius, Spacing } from '@/shared/ui/theme';
 import { useTheme } from '@/shared/ui/use-theme';
 
 import type { ShoppingListItem } from '../domain/build-shopping-list';
+import type { ShoppingSource } from '../domain/shopping-source';
 
 export type ShoppingListViewProps = {
   items: ShoppingListItem[];
   /** Ticked items, by name. Session-local: the list is derived, not stored. */
   checked: Set<string>;
   onToggle: (name: string) => void;
+  /** Only changes what the empty state says. Defaults to the weekly menu. */
+  source?: ShoppingSource;
 };
 
 function describe(item: ShoppingListItem, t: Translate): string {
+  if (item.neededFor.length === 0) return t('shopping.reason.low');
   return t('shopping.reason.neededFor', { dishes: item.neededFor.join(', ') });
 }
 
-export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewProps) {
+export function ShoppingListView({
+  items,
+  checked,
+  onToggle,
+  source = 'menu',
+}: ShoppingListViewProps) {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -33,7 +42,7 @@ export function ShoppingListView({ items, checked, onToggle }: ShoppingListViewP
         icon="checkmark-done"
         tone="sky"
         title={t('shopping.empty.title')}
-        hint={t('shopping.empty.hint')}
+        hint={t(source === 'low-stock' ? 'shopping.empty.hint.lowStock' : 'shopping.empty.hint.menu')}
       />
     );
   }

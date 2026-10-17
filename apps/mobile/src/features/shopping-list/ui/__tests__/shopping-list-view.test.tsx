@@ -28,6 +28,12 @@ describe('ShoppingListView', () => {
     expect(screen.getByText(/needed for Pasta night/i)).toBeTruthy();
   });
 
+  it('says when something is simply running low', () => {
+    renderView({ items: [item({ name: 'Flour', neededFor: [] })] });
+
+    expect(screen.getByText(/running low/i)).toBeTruthy();
+  });
+
   it('names every dish that needs it, not just the first', () => {
     renderView({ items: [item({ neededFor: ['Pasta night', 'Lasagna'] })] });
 

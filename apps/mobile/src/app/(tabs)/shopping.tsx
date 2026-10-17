@@ -14,9 +14,10 @@ import { planLowStockReminder } from '@/features/shopping-list/domain/plan-low-s
 import { createNotificationScheduler } from '@/features/shopping-list/infrastructure/expo-notification-scheduler';
 import { ShoppingListView } from '@/features/shopping-list/ui/shopping-list-view';
 import { useShoppingChecks } from '@/features/shopping-list/ui/use-shopping-checks';
+import { useShoppingSource } from '@/features/shopping-list/ui/use-shopping-source';
 import { useTranslation } from '@/shared/i18n/i18n-provider';
 import { withAllLocalizedStaples } from '@/shared/i18n/staples';
-import { Screen, ScreenHeader } from '@/shared/ui/controls';
+import { Screen, ScreenHeader, SegmentedControl } from '@/shared/ui/controls';
 import { FadeIn, ProgressBar, Skeleton, useLoop } from '@/shared/ui/motion';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Radius, Spacing } from '@/shared/ui/theme';
@@ -47,6 +48,7 @@ export default function ShoppingScreen() {
   // The ticks go through the shared checks repository, so a household sees
   // the same ones on every phone.
   const { loaded: checksLoaded, isChecked, toggle } = useShoppingChecks();
+  const { source, loaded: sourceLoaded, setSource } = useShoppingSource();
 
   const loadPlan = useCallback(async () => {
     const repository = await createMealPlanRepository();
@@ -78,10 +80,20 @@ export default function ShoppingScreen() {
       buildShoppingList({
         pantry,
         planEntries,
+        source,
         // A plan made in the other language names its staples differently.
         preferences: { ...preferences, staples: withAllLocalizedStaples(preferences.staples) },
       }),
-    [pantry, planEntries, preferences],
+    [pantry, planEntries, preferences, source],
+  );
+
+  const sourceOptions = useMemo(
+    () =>
+      [
+        { value: 'menu', label: t('shopping.source.menu') },
+        { value: 'low-stock', label: t('shopping.source.lowStock') },
+      ] as const,
+    [t],
   );
 
   useEffect(() => {
@@ -105,7 +117,19 @@ export default function ShoppingScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <ScreenHeader title={t('shopping.title')} />
 
-        {loading || pantryLoading || !checksLoaded ? (
+        <View style={styles.sourceWrap}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {t('shopping.source.label')}
+          </ThemedText>
+          <SegmentedControl
+            options={sourceOptions}
+            value={source}
+            onChange={(next) => void setSource(next)}
+            tone="sky"
+          />
+        </View>
+
+        {loading || pantryLoading || !checksLoaded || !sourceLoaded ? (
           <View style={styles.skeletons}>
             <Skeleton height={120} radius={Radius.xxl - 4} />
             {[0, 1, 2, 3].map((index) => (
@@ -119,7 +143,9 @@ export default function ShoppingScreen() {
                 <View style={[styles.summary, { backgroundColor: theme.sky }]}>
                   <View style={styles.summaryText}>
                     <ThemedText type="small" style={{ color: theme.skyInk }}>
-                      {t('shopping.summary')}
+                      {t(
+                        source === 'low-stock' ? 'shopping.summary.lowStock' : 'shopping.summary.menu',
+                      )}
                     </ThemedText>
                     <ThemedText type="heading">
                       {t('shopping.progress', { done, total: items.length })}
@@ -140,6 +166,7 @@ export default function ShoppingScreen() {
               items={items}
               checked={checked}
               onToggle={(name) => void toggle(name)}
+              source={source}
             />
           </>
         )}
@@ -176,6 +203,7 @@ function RollingCart() {
 const styles = StyleSheet.create({
   scroll: { paddingBottom: Spacing.five },
   skeletons: { paddingHorizontal: Spacing.four, gap: Spacing.two },
+  sourceWrap: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.three, gap: Spacing.two },
   summaryWrap: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.three },
   summary: {
     flexDirection: 'row',

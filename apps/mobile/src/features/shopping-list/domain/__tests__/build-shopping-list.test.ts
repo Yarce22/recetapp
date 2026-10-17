@@ -134,3 +134,61 @@ describe('buildShoppingList', () => {
     expect(list.map((item) => item.name)).toEqual(['beef', 'carrot', 'onion']);
   });
 });
+
+describe('buildShoppingList based on low stock', () => {
+  const lowStock = { source: 'low-stock' as const };
+
+  it('lists the pantry items that reached their low-stock threshold', () => {
+    const list = buildShoppingList({
+      pantry: [pantryEntry('Flour', 50, 500), pantryEntry('Rice', 900, 500)],
+      planEntries: [],
+      preferences,
+      ...lowStock,
+    });
+
+    expect(list).toEqual([{ name: 'Flour', neededFor: [] }]);
+  });
+
+  it('ignores an item with no threshold, since the user never asked to be warned', () => {
+    const list = buildShoppingList({
+      pantry: [pantryEntry('Flour', 1, null)],
+      planEntries: [],
+      preferences,
+      ...lowStock,
+    });
+
+    expect(list).toEqual([]);
+  });
+
+  it('ignores the menu, even for ingredients the pantry lacks', () => {
+    const list = buildShoppingList({
+      pantry: [],
+      planEntries: [planEntry('Pasta', ['pasta'])],
+      preferences,
+      ...lowStock,
+    });
+
+    expect(list).toEqual([]);
+  });
+
+  it('sorts alphabetically, so the list is stable', () => {
+    const list = buildShoppingList({
+      pantry: [pantryEntry('Salt', 1, 5), pantryEntry('Flour', 1, 5)],
+      planEntries: [],
+      preferences,
+      ...lowStock,
+    });
+
+    expect(list.map((item) => item.name)).toEqual(['Flour', 'Salt']);
+  });
+
+  it('keeps using the menu when no source is given', () => {
+    const list = buildShoppingList({
+      pantry: [pantryEntry('Flour', 1, 5)],
+      planEntries: [planEntry('Pasta', ['pasta'])],
+      preferences,
+    });
+
+    expect(list.map((item) => item.name)).toEqual(['pasta']);
+  });
+});
