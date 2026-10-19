@@ -3,6 +3,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 import { SharingProvider } from '@/features/household/ui/sharing-provider';
+import { MenuSettingsProvider } from '@/features/menu-settings/ui/menu-settings-provider';
 import { PantryProvider } from '@/features/pantry/ui/pantry-provider';
 import { PreferencesProvider } from '@/features/preferences/ui/preferences-provider';
 import { I18nProvider, useI18n } from '@/shared/i18n/i18n-provider';
@@ -59,43 +60,45 @@ function RootNavigator() {
   return (
     <ThemeProvider value={navigationTheme}>
       <PreferencesProvider>
-        <PantryProvider>
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: theme.background },
-              headerShadowVisible: false,
-              headerTintColor: theme.text,
-              headerTitleStyle: { fontFamily: Typeface.display, fontSize: 20 },
-              contentStyle: { backgroundColor: theme.background },
-            }}
-          >
-            {/* Nothing but the picker exists until a language is chosen, so a
+        <MenuSettingsProvider>
+          <PantryProvider>
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: theme.background },
+                headerShadowVisible: false,
+                headerTintColor: theme.text,
+                headerTitleStyle: { fontFamily: Typeface.display, fontSize: 20 },
+                contentStyle: { backgroundColor: theme.background },
+              }}
+            >
+              {/* Nothing but the picker exists until a language is chosen, so a
                 fresh install lands on it instead of on a screen in a guessed one. */}
-            <Stack.Protected guard={hasChosen}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Protected guard={hasChosen}>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="pantry/add"
+                  options={{ title: t('pantry.add'), presentation: 'modal' }}
+                />
+                <Stack.Screen
+                  name="recipe/[id]"
+                  options={{
+                    title: '',
+                    headerStyle: { backgroundColor: theme.peach },
+                    headerBackButtonDisplayMode: 'minimal',
+                  }}
+                />
+                <Stack.Screen
+                  name="household"
+                  options={{ headerShown: false, presentation: 'modal' }}
+                />
+              </Stack.Protected>
               <Stack.Screen
-                name="pantry/add"
-                options={{ title: t('pantry.add'), presentation: 'modal' }}
+                name="language"
+                options={{ headerShown: false, presentation: 'modal', animation: 'fade' }}
               />
-              <Stack.Screen
-                name="recipe/[id]"
-                options={{
-                  title: '',
-                  headerStyle: { backgroundColor: theme.peach },
-                  headerBackButtonDisplayMode: 'minimal',
-                }}
-              />
-              <Stack.Screen
-                name="household"
-                options={{ headerShown: false, presentation: 'modal' }}
-              />
-            </Stack.Protected>
-            <Stack.Screen
-              name="language"
-              options={{ headerShown: false, presentation: 'modal', animation: 'fade' }}
-            />
-          </Stack>
-        </PantryProvider>
+            </Stack>
+          </PantryProvider>
+        </MenuSettingsProvider>
       </PreferencesProvider>
     </ThemeProvider>
   );

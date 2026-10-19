@@ -24,6 +24,15 @@ jest.mock('@/features/preferences/ui/preferences-provider', () => ({
   }),
 }));
 
+jest.mock('@/features/menu-settings/ui/menu-settings-provider', () => ({
+  useMenuSettings: () => ({
+    settings: jest.requireActual('@/features/menu-settings/domain/menu-settings')
+      .DEFAULT_MENU_SETTINGS,
+    ready: true,
+    update: jest.fn(),
+  }),
+}));
+
 function todayIsoDate(): string {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, '0');

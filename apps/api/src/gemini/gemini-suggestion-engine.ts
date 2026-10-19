@@ -1,12 +1,26 @@
-import type { Language, PreferencesDto, RawDishSuggestion, RecipeDto } from '@recetapp/contracts';
+import type {
+  Language,
+  PreferencesDto,
+  RawDishSuggestion,
+  Region,
+  RecipeDto,
+} from '@recetapp/contracts';
 
 import type { SuggestionEngine } from '../app.ts';
 
 import { GEMINI_RECIPE_SCHEMA, parseModelRecipe } from './recipe-schema.ts';
-import { GEMINI_RESPONSE_SCHEMA, parseModelSuggestions } from './suggestion-schema.ts';
+import { REGION_PROFILES } from './region-profiles.ts';
+import {
+  GEMINI_PLAN_WITH_INGREDIENTS_SCHEMA,
+  GEMINI_RESPONSE_SCHEMA,
+  MAX_PLAN_SUGGESTIONS,
+  parseModelSuggestions,
+} from './suggestion-schema.ts';
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 const REQUEST_TIMEOUT_MS = 20_000;
+/** A plan can ask for dozens of dishes in one answer, which takes longer. */
+const PLAN_TIMEOUT_MS = 60_000;
 
 export type GeminiOptions = {
   apiKey: string;
@@ -87,19 +101,36 @@ function buildRecipePrompt(
   ].join('\n');
 }
 
-function buildWeekPrompt(
-  pantry: string[],
-  preferences: PreferencesDto,
-  count: number,
-  language: Language,
-): string {
+export type WeekPromptInput = {
+  pantry: string[];
+  preferences: PreferencesDto;
+  count: number;
+  language: Language;
+  region: Region;
+  allowRepeats: boolean;
+  includeIngredients: boolean;
+};
+
+function buildWeekPrompt(input: WeekPromptInput): string {
+  const { pantry, preferences, count, language, region, allowRepeats, includeIngredients } = input;
+  const profile = REGION_PROFILES[region];
   const rules =
     preferences.suggestionMode === 'strict'
       ? 'Use ONLY ingredients from the pantry list and the staples list.'
       : `You may introduce at most ${preferences.maxMissingIngredients} ingredients per dish that are not in the pantry.`;
 
+  // More than the plan needs when repeats are banned, because the mode filter
+  // and the no-repeat rule both discard dishes before anything reaches a slot.
+  const dishes = allowRepeats
+    ? Math.min(MAX_PLAN_SUGGESTIONS, Math.max(7, Math.ceil(count / 2)))
+    : Math.min(MAX_PLAN_SUGGESTIONS, count + 4);
+
+  const variety = allowRepeats
+    ? `Propose ${dishes} dishes. Dishes may repeat across the plan, so favour the best matches, but still vary the main ingredient and the cooking method.`
+    : `Propose ${dishes} DIFFERENT dishes. Never repeat a dish, not even under a different name. Vary the main ingredient and the cooking method.`;
+
   return [
-    'You plan a week of meals for someone, using what they have at home.',
+    `You plan meals for someone living in ${profile.name}, using what they have at home.`,
     '',
     `Pantry: ${JSON.stringify(pantry)}`,
     `Staples always available: ${JSON.stringify(preferences.staples)}`,
@@ -107,10 +138,14 @@ function buildWeekPrompt(
     `Never use these ingredients: ${JSON.stringify(preferences.dislikes)}`,
     '',
     rules,
-    // More than the week needs, because the mode filter and the no-repeat
-    // rule both discard dishes before anything reaches a slot.
-    `Propose ${Math.min(12, count + 4)} DIFFERENT dishes. Vary the main ingredient and the cooking method; do not propose the same dish twice under different names.`,
+    variety,
+    ...profile.guidance,
     'List every ingredient each dish needs, marking as optional only what can genuinely be left out.',
+    ...(includeIngredients
+      ? [
+          'Give every ingredient a numeric amount for one serving of the dish and one of the allowed units.',
+        ]
+      : []),
     ...languageInstructions(language),
     'Answer with JSON matching the required schema and nothing else.',
   ].join('\n');
@@ -129,7 +164,11 @@ function buildWeekPrompt(
 export function createGeminiSuggestionEngine(options: GeminiOptions): SuggestionEngine {
   const doFetch = options.fetchImpl ?? fetch;
 
-  async function askForJson(prompt: string, responseSchema: unknown): Promise<unknown> {
+  async function askForJson(
+    prompt: string,
+    responseSchema: unknown,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  ): Promise<unknown> {
     const response = await doFetch(
       `${ENDPOINT}/${encodeURIComponent(options.model)}:generateContent`,
       {
@@ -146,7 +185,7 @@ export function createGeminiSuggestionEngine(options: GeminiOptions): Suggestion
             temperature: 0.7,
           },
         }),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutMs),
       },
     );
 
@@ -189,12 +228,13 @@ export function createGeminiSuggestionEngine(options: GeminiOptions): Suggestion
       return parseModelRecipe(parsed);
     },
 
-    async planWeek({ pantry, preferences, count, language }): Promise<RawDishSuggestion[]> {
+    async planWeek(input): Promise<RawDishSuggestion[]> {
       const parsed = await askForJson(
-        buildWeekPrompt(pantry, preferences, count, language),
-        GEMINI_RESPONSE_SCHEMA,
+        buildWeekPrompt(input),
+        input.includeIngredients ? GEMINI_PLAN_WITH_INGREDIENTS_SCHEMA : GEMINI_RESPONSE_SCHEMA,
+        PLAN_TIMEOUT_MS,
       );
-      return parseModelSuggestions(parsed);
+      return parseModelSuggestions(parsed, { max: MAX_PLAN_SUGGESTIONS });
     },
   };
 }

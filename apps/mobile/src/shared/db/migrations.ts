@@ -112,6 +112,15 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    version: 6,
+    statements: [
+      // The dish ingredients with amounts, as JSON, for plans generated with
+      // "include ingredients". Nullable: older rows and plans generated without
+      // the option simply have none, and the recipe is fetched on demand.
+      `ALTER TABLE meal_plan_entries ADD COLUMN recipe_ingredients TEXT`,
+    ],
+  },
 ];
 
 /**

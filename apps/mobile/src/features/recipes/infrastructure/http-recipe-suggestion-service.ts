@@ -1,7 +1,10 @@
 import {
   DEFAULT_LANGUAGE,
+  DEFAULT_REGION,
+  parseRecipeIngredients,
   type DishSuggestionDto,
   type Language,
+  type MealPlanEntryDto,
   type MealPlanResponse,
   type PreferencesDto,
   type RecipeResponse,
@@ -33,6 +36,14 @@ export type HttpSuggestionServiceOptions = {
 };
 
 const REQUEST_TIMEOUT_MS = 30_000;
+/** A plan can cover two weeks and carry every dish's ingredients, which takes longer. */
+const PLAN_TIMEOUT_MS = 75_000;
+
+function readEntry(entry: MealPlanEntryDto): MealPlanEntryDto {
+  const { recipeIngredients, ...rest } = entry;
+  const ingredients = parseRecipeIngredients(recipeIngredients);
+  return ingredients ? { ...rest, recipeIngredients: ingredients } : rest;
+}
 
 function looksLikeSuggestion(value: unknown): value is DishSuggestionDto {
   if (value === null || typeof value !== 'object') return false;
@@ -248,8 +259,11 @@ export function createHttpRecipeSuggestionService(
             slots: input.slots,
             exclude: input.exclude,
             language,
+            region: input.region ?? DEFAULT_REGION,
+            allowRepeats: input.allowRepeats ?? false,
+            includeIngredients: input.includeIngredients ?? false,
           }),
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          signal: AbortSignal.timeout(PLAN_TIMEOUT_MS),
         });
       } catch {
         throw new SuggestionServiceError(
@@ -286,7 +300,7 @@ export function createHttpRecipeSuggestionService(
       }
 
       return {
-        entries: candidate.entries,
+        entries: candidate.entries.map(readEntry),
         unfilled: Array.isArray(candidate.unfilled) ? candidate.unfilled : [],
       };
     },

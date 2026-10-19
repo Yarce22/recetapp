@@ -1,4 +1,4 @@
-import { buildMealPlan, startOfWeek, weekDates } from '../meal-plan-rules.ts';
+import { buildMealPlan, startOfWeek, weekDates, weekStarts } from '../meal-plan-rules.ts';
 import type { PreferencesDto, RawDishSuggestion } from '../types.ts';
 
 const preferences = (overrides: Partial<PreferencesDto> = {}): PreferencesDto => ({
@@ -195,5 +195,105 @@ describe('buildMealPlan', () => {
 
     expect(result.entries).toEqual([]);
     expect(result.unfilled).toHaveLength(3);
+  });
+});
+
+describe('weekStarts', () => {
+  it('lists consecutive Mondays from the week containing the date', () => {
+    expect(weekStarts('2026-09-23', 1)).toEqual(['2026-09-21']);
+    expect(weekStarts('2026-09-23', 2)).toEqual(['2026-09-21', '2026-09-28']);
+  });
+
+  it('crosses a month boundary', () => {
+    expect(weekStarts('2026-09-28', 2)).toEqual(['2026-09-28', '2026-10-05']);
+  });
+});
+
+describe('buildMealPlan with repeats allowed', () => {
+  const slots = [
+    { date: '2026-09-21', slot: 'dinner' as const },
+    { date: '2026-09-22', slot: 'dinner' as const },
+    { date: '2026-09-23', slot: 'dinner' as const },
+  ];
+
+  it('reuses dishes to fill every slot', () => {
+    const { entries, unfilled } = buildMealPlan({
+      proposals: [dish('Pasta'), dish('Stew')],
+      slots,
+      exclude: [],
+      pantry: ['tomato'],
+      preferences: preferences(),
+      allowRepeats: true,
+    });
+
+    expect(entries.map((e) => e.dishTitle)).toEqual(['Pasta', 'Stew', 'Pasta']);
+    expect(unfilled).toEqual([]);
+  });
+
+  it('still reports unfilled slots when nothing survives the filters', () => {
+    const { entries, unfilled } = buildMealPlan({
+      proposals: [],
+      slots,
+      exclude: [],
+      pantry: [],
+      preferences: preferences(),
+      allowRepeats: true,
+    });
+
+    expect(entries).toEqual([]);
+    expect(unfilled).toHaveLength(3);
+  });
+
+  it('does not repeat by default', () => {
+    const { entries, unfilled } = buildMealPlan({
+      proposals: [dish('Pasta'), dish('Stew')],
+      slots,
+      exclude: [],
+      pantry: ['tomato'],
+      preferences: preferences(),
+    });
+
+    expect(entries).toHaveLength(2);
+    expect(unfilled).toHaveLength(1);
+  });
+});
+
+describe('buildMealPlan with ingredients included', () => {
+  const withQuantities = (title: string): RawDishSuggestion => ({
+    title,
+    summary: 's',
+    ingredients: [
+      { name: 'tomato', optional: false, quantity: { amount: 200, unit: 'g' } },
+      { name: 'salt', optional: true },
+    ],
+  });
+
+  const slots = [{ date: '2026-09-21', slot: 'dinner' as const }];
+
+  it('attaches the dish ingredients that came with a quantity', () => {
+    const { entries } = buildMealPlan({
+      proposals: [withQuantities('Pasta')],
+      slots,
+      exclude: [],
+      pantry: ['tomato'],
+      preferences: preferences(),
+      includeIngredients: true,
+    });
+
+    expect(entries[0].recipeIngredients).toEqual([
+      { name: 'tomato', quantity: { amount: 200, unit: 'g' }, optional: false },
+    ]);
+  });
+
+  it('leaves the field out when not asked for', () => {
+    const { entries } = buildMealPlan({
+      proposals: [withQuantities('Pasta')],
+      slots,
+      exclude: [],
+      pantry: ['tomato'],
+      preferences: preferences(),
+    });
+
+    expect(entries[0]).not.toHaveProperty('recipeIngredients');
   });
 });

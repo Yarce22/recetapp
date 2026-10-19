@@ -2,10 +2,13 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { RecipeDto } from '@recetapp/contracts';
+import type { MealPlanEntryDto, RecipeDto } from '@recetapp/contracts';
 
+import { makeFindPlannedDish } from '@/features/meal-plan/application/find-planned-dish';
+import { createMealPlanRepository } from '@/features/meal-plan/infrastructure/create-meal-plan-repository';
 import { usePantry } from '@/features/pantry/ui/pantry-provider';
 import { usePreferences } from '@/features/preferences/ui/preferences-provider';
+import { resolveRecipe } from '@/features/recipes/application/resolve-recipe';
 import { createHttpRecipeSuggestionService } from '@/features/recipes/infrastructure/http-recipe-suggestion-service';
 import { describeServiceError } from '@/features/recipes/ui/describe-service-error';
 import { RecipeDetail, type CookStatus } from '@/features/recipes/ui/recipe-detail';
@@ -27,6 +30,8 @@ export default function RecipeDetailScreen() {
   const { entries, cookRecipe } = usePantry();
   const { preferences, deviceId } = usePreferences();
 
+  // `undefined` until the menu has been looked up, `null` when the dish is not on it.
+  const [planEntry, setPlanEntry] = useState<MealPlanEntryDto | null | undefined>(undefined);
   const [recipe, setRecipe] = useState<RecipeDto | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [servings, setServings] = useState<number | undefined>(undefined);
@@ -67,7 +72,28 @@ export default function RecipeDetailScreen() {
   );
 
   useEffect(() => {
-    if (!service || !title) return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const found = await makeFindPlannedDish(await createMealPlanRepository())(id);
+        if (!cancelled) setPlanEntry(found ?? null);
+      } catch {
+        // The menu is an optimisation here: without it the recipe simply comes
+        // from the server as before.
+        if (!cancelled) setPlanEntry(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    // Waits for the menu lookup so the recipe is requested once, with the
+    // servings the stored ingredients were planned for.
+    if (!service || !title || planEntry === undefined) return;
 
     // Guards against a race the servings stepper makes easy to hit: tapping +
     // twice starts two requests, and without this the slower one can land last
@@ -81,12 +107,13 @@ export default function RecipeDetailScreen() {
 
     void (async () => {
       try {
-        const result = await service.recipe({
+        const result = await resolveRecipe(service, {
           id,
           title,
           pantry: entries,
           preferences,
           servings,
+          planEntry: planEntry ?? undefined,
         });
         if (cancelled) return;
         setRecipe(result.recipe);
@@ -107,7 +134,7 @@ export default function RecipeDetailScreen() {
     // than watched: refetching a recipe because the user edited an unrelated
     // pantry item would waste a model call and reset their servings choice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [service, id, title, servings]);
+  }, [service, id, title, servings, planEntry]);
 
   if (!title) {
     return (

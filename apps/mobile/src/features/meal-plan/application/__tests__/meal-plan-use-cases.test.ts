@@ -195,3 +195,111 @@ describe('getWeek', () => {
     expect(await getWeek('2026-09-24')).toHaveLength(1);
   });
 });
+
+describe('menu generation settings', () => {
+  const twoDinners = [
+    { date: '2026-09-21', slot: 'dinner' as const },
+    { date: '2026-09-22', slot: 'dinner' as const },
+  ];
+
+  it('asks for Colombia, no repeats and no ingredients by default', async () => {
+    const { generateWeek, calls } = setup(() => ({ entries: [], unfilled: [] }));
+
+    await generateWeek({ ...base, slots: twoDinners });
+
+    expect(calls[0]).toMatchObject({
+      region: 'CO',
+      allowRepeats: false,
+      includeIngredients: false,
+    });
+  });
+
+  it('forwards the chosen settings', async () => {
+    const { generateWeek, regenerateDay, calls } = setup(() => ({ entries: [], unfilled: [] }));
+    const settings = { region: 'CO' as const, allowRepeats: true, includeIngredients: true };
+
+    await generateWeek({ ...base, ...settings, slots: twoDinners });
+    await regenerateDay({ ...base, ...settings, date: '2026-09-22', slots: ['dinner'] });
+
+    expect(calls[0]).toMatchObject(settings);
+    expect(calls[1]).toMatchObject(settings);
+  });
+
+  it('drops a repeated dish the server let through and reports its slot as unfilled', async () => {
+    const { generateWeek, getWeek } = setup(() => ({
+      entries: [entry('2026-09-21', 'Pasta'), entry('2026-09-22', ' pasta ')],
+      unfilled: [],
+    }));
+
+    const result = await generateWeek({ ...base, slots: twoDinners });
+
+    expect((await getWeek(WEEK)).map((e) => e.dishTitle)).toEqual(['Pasta']);
+    expect(result.unfilled).toEqual([{ date: '2026-09-22', slot: 'dinner' }]);
+  });
+
+  it('keeps repeated dishes when they are allowed', async () => {
+    const { generateWeek, getWeek } = setup(() => ({
+      entries: [entry('2026-09-21', 'Pasta'), entry('2026-09-22', 'Pasta')],
+      unfilled: [],
+    }));
+
+    const result = await generateWeek({ ...base, allowRepeats: true, slots: twoDinners });
+
+    expect(await getWeek(WEEK)).toHaveLength(2);
+    expect(result.unfilled).toEqual([]);
+  });
+
+  it('refuses to refill a day with a dish planned elsewhere, and clears the slot', async () => {
+    const { repository, regenerateDay, getWeek } = setup(() => ({
+      entries: [entry('2026-09-22', 'Pasta')],
+      unfilled: [],
+    }));
+    await repository.upsertMany([entry('2026-09-21', 'Pasta'), entry('2026-09-22', 'Stew')]);
+
+    const result = await regenerateDay({ ...base, date: '2026-09-22', slots: ['dinner'] });
+
+    expect((await getWeek(WEEK)).map((e) => e.dishTitle)).toEqual(['Pasta']);
+    expect(result.unfilled).toEqual([{ date: '2026-09-22', slot: 'dinner' }]);
+  });
+
+  it('sends no exclusions when repeats are allowed', async () => {
+    const { repository, regenerateDay, calls } = setup(() => ({ entries: [], unfilled: [] }));
+    await repository.upsertMany([entry('2026-09-21', 'Pasta')]);
+
+    await regenerateDay({ ...base, allowRepeats: true, date: '2026-09-22', slots: ['dinner'] });
+
+    expect(calls[0].exclude).toEqual([]);
+  });
+
+  it('excludes dishes from every week of a biweekly period', async () => {
+    const { repository, regenerateDay, calls } = setup(() => ({ entries: [], unfilled: [] }));
+    await repository.upsertMany([
+      entry('2026-09-21', 'Pasta'),
+      entry('2026-09-22', 'Stew'),
+      entry('2026-09-29', 'Curry'),
+    ]);
+
+    await regenerateDay({
+      ...base,
+      weekStartDates: [WEEK, '2026-09-28'],
+      date: '2026-09-22',
+      slots: ['dinner'],
+    });
+
+    expect([...calls[0].exclude].sort()).toEqual(['Curry', 'Pasta']);
+  });
+
+  it('stores the ingredients that came with the dishes', async () => {
+    const withIngredients: MealPlanEntryDto = {
+      ...entry('2026-09-21', 'Pasta'),
+      recipeIngredients: [
+        { name: 'tomato', quantity: { amount: 2, unit: 'unit' }, optional: false },
+      ],
+    };
+    const { generateWeek, getWeek } = setup(() => ({ entries: [withIngredients], unfilled: [] }));
+
+    await generateWeek({ ...base, includeIngredients: true, slots: twoDinners });
+
+    expect((await getWeek(WEEK))[0].recipeIngredients).toEqual(withIngredients.recipeIngredients);
+  });
+});

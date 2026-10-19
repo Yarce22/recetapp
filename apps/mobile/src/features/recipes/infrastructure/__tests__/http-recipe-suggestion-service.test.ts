@@ -219,3 +219,60 @@ describe('http recipe suggestion service - recipe', () => {
     await expect(service.recipe(recipeInput)).rejects.toThrow(SuggestionServiceError);
   });
 });
+
+describe('http recipe suggestion service - meal plan settings', () => {
+  const planInput = {
+    pantry,
+    preferences: DEFAULT_PREFERENCES,
+    slots: [{ date: '2026-09-21', slot: 'dinner' as const }],
+    exclude: [],
+  };
+
+  async function sentBody(extra: Record<string, unknown>) {
+    let body: Record<string, unknown> = {};
+    const service = setup((async (_url: unknown, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body));
+      return jsonResponse({ entries: [], unfilled: [] });
+    }) as typeof fetch);
+
+    await service.planWeek({ ...planInput, ...extra });
+    return body;
+  }
+
+  it('sends the region, repeat and ingredient settings', async () => {
+    const body = await sentBody({ region: 'CO', allowRepeats: true, includeIngredients: true });
+
+    expect(body).toMatchObject({ region: 'CO', allowRepeats: true, includeIngredients: true });
+  });
+
+  it('defaults to Colombia, no repeats and no ingredients', async () => {
+    const body = await sentBody({});
+
+    expect(body).toMatchObject({ region: 'CO', allowRepeats: false, includeIngredients: false });
+  });
+
+  it('hands back the ingredients the server included', async () => {
+    const recipeIngredients = [
+      { name: 'tomato', quantity: { amount: 2, unit: 'unit' }, optional: false },
+    ];
+    const service = setup((async () =>
+      jsonResponse({
+        entries: [
+          {
+            date: '2026-09-21',
+            slot: 'dinner',
+            dishId: 'pasta',
+            dishTitle: 'Pasta',
+            summary: '',
+            ingredients: ['tomato'],
+            recipeIngredients,
+          },
+        ],
+        unfilled: [],
+      })) as typeof fetch);
+
+    const result = await service.planWeek({ ...planInput, includeIngredients: true });
+
+    expect(result.entries[0].recipeIngredients).toEqual(recipeIngredients);
+  });
+});

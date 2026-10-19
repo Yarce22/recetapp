@@ -60,4 +60,26 @@ describe('ShoppingListView', () => {
 
     expect(screen.getByText(/nothing to buy/i)).toBeTruthy();
   });
+
+  it('shows the amount to buy next to the name when the item has one', () => {
+    renderView({ items: [item({ quantities: [{ amount: 300, unit: 'g' }] })] });
+
+    expect(screen.getByText(/300 g/)).toBeTruthy();
+  });
+
+  it('shows every amount when the units differ', () => {
+    renderView({
+      items: [
+        item({
+          quantities: [
+            { amount: 100, unit: 'g' },
+            { amount: 2, unit: 'unit' },
+          ],
+        }),
+      ],
+    });
+
+    expect(screen.getByText(/100 g/)).toBeTruthy();
+    expect(screen.getByText(/2 unit/)).toBeTruthy();
+  });
 });

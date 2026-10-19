@@ -108,3 +108,35 @@ describe('parseModelSuggestions', () => {
     expect(parseModelSuggestions({ suggestions: [] })).toEqual([]);
   });
 });
+
+describe('parseModelSuggestions quantities', () => {
+  const dish = (ingredient: Record<string, unknown>) => ({
+    suggestions: [{ title: 'Pasta', summary: 's', ingredients: [ingredient] }],
+  });
+
+  it('keeps a valid quantity', () => {
+    const [parsed] = parseModelSuggestions(
+      dish({ name: 'tomato', optional: false, quantity: { amount: 2, unit: 'unit' } }),
+    );
+    expect(parsed.ingredients[0].quantity).toEqual({ amount: 2, unit: 'unit' });
+  });
+
+  it('drops a quantity it cannot trust instead of rejecting the dish', () => {
+    const [parsed] = parseModelSuggestions(
+      dish({ name: 'tomato', optional: false, quantity: { amount: 2, unit: 'handful' } }),
+    );
+    expect(parsed.ingredients[0].quantity).toBeUndefined();
+  });
+
+  it('accepts a larger list when the caller allows it', () => {
+    const many = {
+      suggestions: Array.from({ length: 40 }, (_, i) => ({
+        title: `Dish ${i}`,
+        summary: 's',
+        ingredients: [],
+      })),
+    };
+    expect(() => parseModelSuggestions(many)).toThrow();
+    expect(parseModelSuggestions(many, { max: 60 })).toHaveLength(40);
+  });
+});

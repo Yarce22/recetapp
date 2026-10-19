@@ -1,5 +1,5 @@
 import { normalizeIngredientName } from './normalize.ts';
-import type { PreferencesDto, Quantity, RecipeDto } from './types.ts';
+import type { PreferencesDto, Quantity, RecipeDto, RecipeIngredientDto } from './types.ts';
 
 /** Amounts are rounded to two decimals: finer than any kitchen scale. */
 const PRECISION = 2;
@@ -96,4 +96,34 @@ export function scaleRecipe(recipe: RecipeDto, toServings: number): RecipeDto {
       quantity: scaleQuantity(ingredient.quantity, factor),
     })),
   };
+}
+
+const UNITS: readonly string[] = ['g', 'kg', 'ml', 'l', 'unit', 'tbsp', 'tsp', 'cup', 'pinch'];
+
+/**
+ * Reads an untrusted list of recipe ingredients, keeping the well formed ones.
+ *
+ * Used wherever the list crosses a boundary (a server response, a stored row):
+ * the field is optional and may come from a build older or newer than this
+ * one. Returns undefined when nothing usable is left, so callers can treat
+ * "absent" and "unusable" the same way.
+ */
+export function parseRecipeIngredients(value: unknown): RecipeIngredientDto[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const valid = value.filter((item): item is RecipeIngredientDto => {
+    if (item === null || typeof item !== 'object') return false;
+    const candidate = item as Partial<RecipeIngredientDto>;
+    return (
+      typeof candidate.name === 'string' &&
+      candidate.name.trim().length > 0 &&
+      typeof candidate.optional === 'boolean' &&
+      typeof candidate.quantity?.amount === 'number' &&
+      Number.isFinite(candidate.quantity.amount) &&
+      typeof candidate.quantity.unit === 'string' &&
+      UNITS.includes(candidate.quantity.unit)
+    );
+  });
+
+  return valid.length > 0 ? valid : undefined;
 }

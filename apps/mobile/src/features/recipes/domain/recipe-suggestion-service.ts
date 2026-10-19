@@ -3,6 +3,7 @@ import type {
   MealPlanEntryDto,
   MealSlot,
   PreferencesDto,
+  Region,
   RecipeDto,
 } from '@recetapp/contracts';
 
@@ -35,6 +36,12 @@ export type MealPlanRequestInput = {
   slots: { date: string; slot: MealSlot }[];
   /** Dish titles already in the week, so a regenerated day stays varied. */
   exclude: string[];
+  /** Regional cuisine to plan for. Defaults to Colombia. */
+  region?: Region;
+  /** When false (the default) the server must not repeat a dish. */
+  allowRepeats?: boolean;
+  /** Ask for each dish's ingredients with amounts in the same response. */
+  includeIngredients?: boolean;
 };
 
 export type MealPlanResult = {

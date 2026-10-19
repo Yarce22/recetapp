@@ -1,4 +1,9 @@
-import { findForbiddenIngredients, findMissingIngredients, scaleRecipe } from '../recipe-rules.ts';
+import {
+  findForbiddenIngredients,
+  findMissingIngredients,
+  parseRecipeIngredients,
+  scaleRecipe,
+} from '../recipe-rules.ts';
 import type { PreferencesDto, RecipeDto } from '../types.ts';
 
 const preferences = (overrides: Partial<PreferencesDto> = {}): PreferencesDto => ({
@@ -118,5 +123,33 @@ describe('scaleRecipe', () => {
 
   it('refuses to scale a recipe that claims zero servings', () => {
     expect(() => scaleRecipe(recipe({ servings: 0 }), 4)).toThrow();
+  });
+});
+
+describe('parseRecipeIngredients', () => {
+  const tomato = { name: 'tomato', quantity: { amount: 2, unit: 'unit' }, optional: false };
+
+  it('keeps well formed ingredients', () => {
+    expect(parseRecipeIngredients([tomato])).toEqual([tomato]);
+  });
+
+  it('drops malformed ones', () => {
+    expect(
+      parseRecipeIngredients([
+        tomato,
+        { name: '', quantity: { amount: 1, unit: 'g' }, optional: false },
+        { name: 'salt', quantity: { amount: 1, unit: 'handful' }, optional: false },
+        { name: 'oil', quantity: { amount: NaN, unit: 'ml' }, optional: false },
+        { name: 'rice', quantity: { amount: 1, unit: 'g' } },
+        null,
+      ]),
+    ).toEqual([tomato]);
+  });
+
+  it('returns undefined for anything that is not a usable list', () => {
+    expect(parseRecipeIngredients(undefined)).toBeUndefined();
+    expect(parseRecipeIngredients('x')).toBeUndefined();
+    expect(parseRecipeIngredients([])).toBeUndefined();
+    expect(parseRecipeIngredients([{ name: 1 }])).toBeUndefined();
   });
 });

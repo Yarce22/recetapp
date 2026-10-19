@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import {
+  DEFAULT_REGION,
   LANGUAGES,
+  REGIONS,
   buildMealPlan,
   enforceSuggestionMode,
   findForbiddenIngredients,
@@ -13,6 +15,7 @@ import {
   type MealPlanResponse,
   type PreferencesDto,
   type RawDishSuggestion,
+  type Region,
   type RecipeDto,
   type RecipeResponse,
   type SuggestionsResponse,
@@ -49,6 +52,9 @@ export type SuggestionEngine = {
     preferences: PreferencesDto;
     count: number;
     language: Language;
+    region: Region;
+    allowRepeats: boolean;
+    includeIngredients: boolean;
   }): Promise<RawDishSuggestion[]>;
 };
 
@@ -95,13 +101,18 @@ const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-
 const mealPlanRequestSchema = z.object({
   pantry: pantrySchema,
   preferences: preferencesSchema,
-  // A week holds 7 days times 3 meals. More than that is not a week.
+  // Two weeks of 7 days times 3 meals is the longest plan there is.
   slots: z
     .array(z.object({ date: isoDateSchema, slot: z.enum(['breakfast', 'lunch', 'dinner']) }))
     .min(1)
-    .max(21),
-  exclude: z.array(z.string().max(200)).max(50).default([]),
+    .max(42),
+  exclude: z.array(z.string().max(200)).max(100).default([]),
   language: languageSchema,
+  // Absent means Colombia, the default region, so builds that predate the
+  // setting keep working.
+  region: z.enum(REGIONS).default(DEFAULT_REGION),
+  allowRepeats: z.boolean().default(false),
+  includeIngredients: z.boolean().default(false),
 });
 
 /** Never leaks upstream detail: it can carry the key, the prompt, or the model's words. */
@@ -245,7 +256,16 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       });
     }
 
-    const { pantry, preferences, slots, exclude, language } = parsed.data;
+    const {
+      pantry,
+      preferences,
+      slots,
+      exclude,
+      language,
+      region,
+      allowRepeats,
+      includeIngredients,
+    } = parsed.data;
     const pantryNames = pantry.map((entry) => entry.name);
 
     let proposals: RawDishSuggestion[];
@@ -258,6 +278,9 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
         preferences,
         count: slots.length,
         language,
+        region,
+        allowRepeats,
+        includeIngredients,
       });
     } catch (cause) {
       return c.json({ error: upstreamFailure(cause) }, 502);
@@ -269,6 +292,8 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       exclude,
       pantry: pantryNames,
       preferences,
+      allowRepeats,
+      includeIngredients,
     });
 
     const payload: MealPlanResponse = { entries, unfilled };

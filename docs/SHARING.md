@@ -171,6 +171,7 @@ fails the device falls back to solo mode with its local copy and the snapshot re
 | Reinstall / cleared data                  | New anonymous identity, not a member any more: rejoin with a new invite. Old membership is orphaned |
 | Server rejects a payload                  | Dropped after an isolated retry, counted in `rejected`                                              |
 | Sharing env vars missing                  | `isSharingAvailable()` is false; every sharing action throws `unavailable`; nothing else changes    |
+| Plan entry amounts (`recipeIngredients`)  | Local-only: no Supabase column. A remote upsert keeps them if the slot holds the same dish, drops them otherwise |
 | Web build                                 | Sharing is never available (data is in memory there)                                                |
 
 ## Privacy

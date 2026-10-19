@@ -1,4 +1,4 @@
-import type { MealSlot } from '@recetapp/contracts';
+import { startOfWeek, type MealSlot } from '@recetapp/contracts';
 
 import type { MealPlanRepository } from '@/features/meal-plan/domain/meal-plan-repository';
 import { mealPlanEntryToRow } from '@/features/meal-plan/infrastructure/synced-meal-plan-repository';
@@ -87,14 +87,27 @@ export function createMealPlanEntityStore(repository: MealPlanRepository): Entit
         throw new Error('Column "ingredients" must be a list of text.');
       }
 
+      const date = text(row, 'date');
+      const dishId = text(row, 'dish_id');
+
+      // Amounts never travel: the remote row has no column for them. Replacing
+      // the entry would wipe the ones this device stored, so they survive as
+      // long as the slot still holds the same dish. A different dish makes
+      // them wrong, and then the names are all there is.
+      const local = (await repository.findByWeek(startOfWeek(date))).find(
+        (entry) => entry.date === date && entry.slot === slot,
+      );
+      const recipeIngredients = local?.dishId === dishId ? local.recipeIngredients : undefined;
+
       await repository.upsertMany([
         {
-          date: text(row, 'date'),
+          date,
           slot: slot as MealSlot,
-          dishId: text(row, 'dish_id'),
+          dishId,
           dishTitle: text(row, 'dish_title'),
           summary: text(row, 'summary'),
           ingredients,
+          ...(recipeIngredients ? { recipeIngredients } : {}),
         },
       ]);
     },

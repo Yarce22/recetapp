@@ -31,6 +31,13 @@ describe('shipped migrations', () => {
     expect(new Set(versions).size).toBe(versions.length);
   });
 
+  it('add the nullable recipe ingredients column in version 6', () => {
+    const sql = MIGRATIONS.find((migration) => migration.version === 6)?.statements.join('\n');
+
+    expect(sql).toMatch(/ALTER TABLE meal_plan_entries ADD COLUMN recipe_ingredients TEXT/);
+    expect(sql).not.toMatch(/NOT NULL/);
+  });
+
   it('create the shopping ticks and the sync bookkeeping tables in version 5', () => {
     const sql = MIGRATIONS.find((migration) => migration.version === 5)?.statements.join('\n');
 

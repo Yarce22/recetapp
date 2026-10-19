@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { weekDates } from '@recetapp/contracts';
+import { parseRecipeIngredients, weekDates } from '@recetapp/contracts';
 
 import type {
   MealPlanEntryDto,
@@ -16,6 +16,8 @@ type MealPlanRow = {
   summary: string;
   /** JSON array of ingredient names. */
   ingredients: string;
+  /** JSON array of ingredients with amounts, or null when the plan had none. */
+  recipe_ingredients?: string | null;
 };
 
 /**
@@ -34,7 +36,19 @@ function parseIngredients(raw: string): string[] {
   }
 }
 
+/** Reads the stored ingredients with amounts, treating anything unreadable as absent. */
+function parseRecipeIngredientsColumn(raw: string | null | undefined) {
+  if (!raw) return undefined;
+  try {
+    return parseRecipeIngredients(JSON.parse(raw));
+  } catch {
+    return undefined;
+  }
+}
+
 function rowToEntry(row: MealPlanRow): MealPlanEntryDto {
+  const recipeIngredients = parseRecipeIngredientsColumn(row.recipe_ingredients);
+
   return {
     date: row.date,
     slot: row.slot as MealSlot,
@@ -42,6 +56,7 @@ function rowToEntry(row: MealPlanRow): MealPlanEntryDto {
     dishTitle: row.dish_title,
     summary: row.summary,
     ingredients: parseIngredients(row.ingredients),
+    ...(recipeIngredients ? { recipeIngredients } : {}),
   };
 }
 
@@ -50,13 +65,15 @@ const SELECT_WEEK =
   'SELECT * FROM meal_plan_entries WHERE date BETWEEN ? AND ? ORDER BY date, slot';
 const DELETE_ONE = 'DELETE FROM meal_plan_entries WHERE date = ? AND slot = ?';
 const UPSERT = `
-  INSERT INTO meal_plan_entries (date, slot, dish_id, dish_title, summary, ingredients)
-  VALUES (?, ?, ?, ?, ?, ?)
+  INSERT INTO meal_plan_entries
+    (date, slot, dish_id, dish_title, summary, ingredients, recipe_ingredients)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(date, slot) DO UPDATE SET
     dish_id     = excluded.dish_id,
     dish_title  = excluded.dish_title,
     summary     = excluded.summary,
-    ingredients = excluded.ingredients
+    ingredients = excluded.ingredients,
+    recipe_ingredients = excluded.recipe_ingredients
 `;
 
 /** SQLite adapter. Every statement is parameterized. */
@@ -84,6 +101,7 @@ export class SqliteMealPlanRepository implements MealPlanRepository {
         entry.dishTitle,
         entry.summary,
         JSON.stringify(entry.ingredients),
+        entry.recipeIngredients ? JSON.stringify(entry.recipeIngredients) : null,
       ]);
     }
   }

@@ -11,6 +11,7 @@
 
 export * from './types.ts';
 export * from './language.ts';
+export * from './regions.ts';
 export * from './normalize.ts';
 export * from './enforce-suggestion-mode.ts';
 export * from './recipe-rules.ts';

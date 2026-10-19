@@ -64,6 +64,20 @@ export function weekDates(isoDate: string): string[] {
   });
 }
 
+/**
+ * The Mondays of `weeks` consecutive weeks, starting with the week that
+ * contains the given date. A biweekly menu is two of these.
+ */
+export function weekStarts(isoDate: string, weeks: number): string[] {
+  const monday = toUtcDate(startOfWeek(isoDate));
+
+  return Array.from({ length: Math.max(1, Math.floor(weeks)) }, (_, offset) => {
+    const day = new Date(monday);
+    day.setUTCDate(monday.getUTCDate() + offset * 7);
+    return toIsoDate(day);
+  });
+}
+
 export type MealPlanSlotRequest = {
   date: string;
   slot: MealSlot;
@@ -78,6 +92,10 @@ export type BuildMealPlanInput = {
   exclude: string[];
   pantry: string[];
   preferences: PreferencesDto;
+  /** Let a dish fill more than one slot. Defaults to false. */
+  allowRepeats?: boolean;
+  /** Attach each dish's ingredients with amounts to its entries. */
+  includeIngredients?: boolean;
 };
 
 export type BuildMealPlanResult = {
@@ -92,7 +110,7 @@ export type BuildMealPlanResult = {
  * Two rules, both deterministic, because a prompt asking for variety is a
  * request and not a guarantee:
  *
- * - every dish appears at most once, matched through the shared name
+ * - unless `allowRepeats` is set, every dish appears at most once, matched through the shared name
  *   normalization so "Pasta" and "pasta" are the same dish
  * - anything already placed elsewhere in the week is skipped, which is what
  *   makes regenerating a single day keep the rest of the week varied
@@ -114,6 +132,10 @@ export function buildMealPlan(input: BuildMealPlanInput): BuildMealPlanResult {
   const entries: MealPlanEntryDto[] = [];
   const unfilled: MealPlanSlotRequest[] = [];
 
+  const detailed = new Map(
+    input.proposals.map((proposal) => [normalizeIngredientName(proposal.title), proposal]),
+  );
+
   const available = kept.filter((suggestion) => {
     const key = normalizeIngredientName(suggestion.title);
     if (used.has(key)) return false;
@@ -123,13 +145,31 @@ export function buildMealPlan(input: BuildMealPlanInput): BuildMealPlanResult {
 
   let next = 0;
   for (const slot of input.slots) {
-    const suggestion = available[next];
+    // With repeats allowed the dishes are dealt out in rotation, so the week
+    // stays as varied as the proposals allow without leaving gaps.
+    const suggestion = input.allowRepeats
+      ? available[next % Math.max(available.length, 1)]
+      : available[next];
     if (!suggestion) {
       unfilled.push(slot);
       continue;
     }
 
     next += 1;
+    const recipeIngredients = input.includeIngredients
+      ? (detailed.get(normalizeIngredientName(suggestion.title))?.ingredients ?? []).flatMap(
+          (ingredient) =>
+            ingredient.quantity
+              ? [
+                  {
+                    name: ingredient.name,
+                    quantity: ingredient.quantity,
+                    optional: ingredient.optional,
+                  },
+                ]
+              : [],
+        )
+      : undefined;
     entries.push({
       date: slot.date,
       slot: slot.slot,
@@ -139,6 +179,7 @@ export function buildMealPlan(input: BuildMealPlanInput): BuildMealPlanResult {
       // Already known here. Throwing it away would cost a model call per dish
       // later, when the shopping list asks what the week needs.
       ingredients: [...suggestion.matchedIngredients, ...suggestion.missingIngredients],
+      ...(recipeIngredients && recipeIngredients.length > 0 ? { recipeIngredients } : {}),
     });
   }
 

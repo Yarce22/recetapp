@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 
+import { formatQuantity } from '@/features/pantry/ui/format-quantity';
 import { useTranslation } from '@/shared/i18n/i18n-provider';
 import type { Translate } from '@/shared/i18n/translator';
 import { EmptyState } from '@/shared/ui/controls';
@@ -34,7 +35,8 @@ export function ShoppingListView({
   source = 'menu',
 }: ShoppingListViewProps) {
   const theme = useTheme();
-  const { t } = useTranslation();
+  const translator = useTranslation();
+  const { t } = translator;
 
   if (items.length === 0) {
     return (
@@ -76,6 +78,9 @@ export function ShoppingListView({
                   style={[styles.name, ticked && styles.struck]}
                 >
                   {item.name}
+                  {item.quantities && item.quantities.length > 0
+                    ? ` · ${item.quantities.map((quantity) => formatQuantity(quantity, translator)).join(' + ')}`
+                    : ''}
                 </ThemedText>
                 {/* Which dishes want it. A bare list of words is harder to act on. */}
                 <ThemedText type="small" themeColor="textSecondary">

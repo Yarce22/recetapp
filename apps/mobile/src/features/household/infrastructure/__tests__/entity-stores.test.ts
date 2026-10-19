@@ -70,6 +70,48 @@ describe('meal plan entity store', () => {
     expect(await store.readAll()).toEqual([row]);
   });
 
+  describe('local-only recipe ingredients', () => {
+    const amounts = [{ name: 'rice', quantity: { amount: 80, unit: 'g' as const }, optional: false }];
+    const localEntry = {
+      date: row.date,
+      slot: 'dinner' as const,
+      dishId: row.dish_id,
+      dishTitle: row.dish_title,
+      summary: row.summary,
+      ingredients: row.ingredients,
+      recipeIngredients: amounts,
+    };
+
+    it('keeps the local amounts when the remote row is the same dish', async () => {
+      const repo = new InMemoryMealPlanRepository();
+      await repo.upsertMany([localEntry]);
+
+      await createMealPlanEntityStore(repo).upsert({ ...row, summary: 'edited elsewhere' });
+
+      const [stored] = await repo.findAll();
+      expect(stored.summary).toBe('edited elsewhere');
+      expect(stored.recipeIngredients).toEqual(amounts);
+    });
+
+    it('drops them when the remote row is a different dish', async () => {
+      const repo = new InMemoryMealPlanRepository();
+      await repo.upsertMany([localEntry]);
+
+      await createMealPlanEntityStore(repo).upsert({ ...row, dish_id: 'd2', dish_title: 'Stew' });
+
+      const [stored] = await repo.findAll();
+      expect(stored.dishId).toBe('d2');
+      expect(stored).not.toHaveProperty('recipeIngredients');
+    });
+
+    it('never puts them on the wire', async () => {
+      const repo = new InMemoryMealPlanRepository();
+      await repo.upsertMany([localEntry]);
+
+      expect(await createMealPlanEntityStore(repo).readAll()).toEqual([row]);
+    });
+  });
+
   it('rejects an unknown slot and a malformed ingredient list', async () => {
     const store = createMealPlanEntityStore(new InMemoryMealPlanRepository());
 

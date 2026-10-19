@@ -136,11 +136,95 @@ describe('POST /meal-plan', () => {
     expect((await post(app, { body: body({ slots: [] }) })).status).toBe(400);
   });
 
-  it('rejects more slots than a week can hold', async () => {
+  it('rejects more slots than two weeks can hold', async () => {
     const app = setup({});
-    const slots = Array.from({ length: 30 }, () => ({ date: '2026-09-21', slot: 'dinner' }));
+    const slots = Array.from({ length: 43 }, () => ({ date: '2026-09-21', slot: 'dinner' }));
 
     expect((await post(app, { body: body({ slots }) })).status).toBe(400);
+  });
+
+  it('accepts a two week plan', async () => {
+    const app = setup({});
+    const slots = Array.from({ length: 42 }, () => ({ date: '2026-09-21', slot: 'dinner' }));
+
+    expect((await post(app, { body: body({ slots }) })).status).toBe(200);
+  });
+
+  it('hands the engine the region, defaulting to Colombia', async () => {
+    const seen: unknown[] = [];
+    const app = setup({
+      planWeek: async (input) => {
+        seen.push(input.region);
+        return [];
+      },
+    });
+
+    await post(app);
+    await post(app, { body: body({ region: 'CO' }) });
+
+    expect(seen).toEqual(['CO', 'CO']);
+  });
+
+  it('rejects a region it does not know', async () => {
+    const app = setup({});
+
+    expect((await post(app, { body: body({ region: 'ZZ' }) })).status).toBe(400);
+  });
+
+  it('does not repeat dishes unless asked to', async () => {
+    const app = setup({ planWeek: async () => [dish('Pasta')] });
+
+    const payload = (await (await post(app)).json()) as MealPlanResponse;
+    expect(payload.entries).toHaveLength(1);
+
+    const repeated = (await (
+      await post(app, { body: body({ allowRepeats: true }) })
+    ).json()) as MealPlanResponse;
+    expect(repeated.entries.map((e) => e.dishTitle)).toEqual(['Pasta', 'Pasta']);
+    expect(repeated.unfilled).toEqual([]);
+  });
+
+  it('tells the engine whether repeats and ingredients are wanted', async () => {
+    const seen: { allowRepeats: boolean; includeIngredients: boolean }[] = [];
+    const app = setup({
+      planWeek: async (input) => {
+        seen.push({
+          allowRepeats: input.allowRepeats,
+          includeIngredients: input.includeIngredients,
+        });
+        return [];
+      },
+    });
+
+    await post(app);
+    await post(app, { body: body({ allowRepeats: true, includeIngredients: true }) });
+
+    expect(seen).toEqual([
+      { allowRepeats: false, includeIngredients: false },
+      { allowRepeats: true, includeIngredients: true },
+    ]);
+  });
+
+  it('returns each dish ingredients when asked to include them', async () => {
+    const withAmounts: RawDishSuggestion = {
+      title: 'Pasta',
+      summary: 's',
+      ingredients: [{ name: 'tomato', optional: false, quantity: { amount: 300, unit: 'g' } }],
+    };
+    const app = setup({ planWeek: async () => [withAmounts] });
+
+    const payload = (await (
+      await post(app, {
+        body: body({
+          includeIngredients: true,
+          slots: [{ date: '2026-09-21', slot: 'dinner' }],
+        }),
+      })
+    ).json()) as MealPlanResponse;
+
+    expect(payload.entries[0].recipeIngredients).toEqual([
+      { name: 'tomato', quantity: { amount: 300, unit: 'g' }, optional: false },
+    ]);
   });
 
   it('requires a device identifier like every other route', async () => {

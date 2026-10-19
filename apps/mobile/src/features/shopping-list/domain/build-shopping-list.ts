@@ -1,4 +1,10 @@
-import { normalizeIngredientName, type MealPlanEntryDto } from '@recetapp/contracts';
+import {
+  normalizeIngredientName,
+  type MealPlanEntryDto,
+  type Quantity,
+} from '@recetapp/contracts';
+
+import { PLAN_SERVINGS } from '@/features/meal-plan/domain/plan-servings';
 
 import { isLowStock } from '@/features/pantry/domain/pantry-item';
 import type { PantryEntry } from '@/features/pantry/domain/pantry-repository';
@@ -11,6 +17,11 @@ export type ShoppingListItem = {
   name: string;
   /** Dishes in the week that use it. Empty when the item is listed for running low. */
   neededFor: string[];
+  /**
+   * How much to buy, summed per unit. Absent when the menu only named the
+   * ingredient: units are never converted, so two units stay two amounts.
+   */
+  quantities?: Quantity[];
 };
 
 export type BuildShoppingListInput = {
@@ -19,6 +30,8 @@ export type BuildShoppingListInput = {
   preferences: PreferencesDto;
   /** What the list is built from. Defaults to the weekly menu. */
   source?: ShoppingSource;
+  /** Servings the stored per-serving amounts are multiplied by. */
+  servings?: number;
 };
 
 /**
@@ -61,14 +74,15 @@ function buildMenuList(input: BuildShoppingListInput): ShoppingListItem[] {
     input.pantry.map((entry) => [normalizeIngredientName(entry.ingredient.name), entry]),
   );
   const staples = new Set(input.preferences.staples.map(normalizeIngredientName));
+  const servings = input.servings ?? PLAN_SERVINGS;
   const needed = new Map<string, ShoppingListItem>();
 
   for (const planEntry of input.planEntries) {
     // A dish listing the same ingredient twice should not name itself twice.
     const seen = new Set<string>();
 
-    for (const ingredient of planEntry.ingredients) {
-      const key = normalizeIngredientName(ingredient);
+    for (const { name, quantity } of plannedLines(planEntry, servings)) {
+      const key = normalizeIngredientName(name);
       if (seen.has(key)) continue;
       seen.add(key);
 
@@ -84,14 +98,51 @@ function buildMenuList(input: BuildShoppingListInput): ShoppingListItem[] {
       const existing = needed.get(key);
       if (existing) {
         existing.neededFor.push(planEntry.dishTitle);
+        if (quantity) existing.quantities = addQuantity(existing.quantities ?? [], quantity);
       } else {
         needed.set(key, {
-          name: owned ? owned.ingredient.displayName : ingredient,
+          name: owned ? owned.ingredient.displayName : name,
           neededFor: [planEntry.dishTitle],
+          ...(quantity ? { quantities: [quantity] } : {}),
         });
       }
     }
   }
 
   return [...needed.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * What a planned dish asks for.
+ *
+ * Prefers the amounts stored with the entry. They are per serving, so they are
+ * multiplied here, and optional ones are dropped: nobody needs a trip to the
+ * shop for a garnish. Entries planned without amounts fall back to the names.
+ */
+function plannedLines(
+  entry: MealPlanEntryDto,
+  servings: number,
+): { name: string; quantity?: Quantity }[] {
+  if (!entry.recipeIngredients) return entry.ingredients.map((name) => ({ name }));
+
+  return entry.recipeIngredients
+    .filter((ingredient) => !ingredient.optional)
+    .map((ingredient) => ({
+      name: ingredient.name,
+      quantity: {
+        amount: Number((ingredient.quantity.amount * servings).toFixed(2)),
+        unit: ingredient.quantity.unit,
+      },
+    }));
+}
+
+/** Adds to the amount of the same unit, or keeps it apart when there is none. */
+function addQuantity(quantities: Quantity[], added: Quantity): Quantity[] {
+  const same = quantities.find((quantity) => quantity.unit === added.unit);
+  if (!same) return [...quantities, added];
+  return quantities.map((quantity) =>
+    quantity === same
+      ? { unit: quantity.unit, amount: Number((quantity.amount + added.amount).toFixed(2)) }
+      : quantity,
+  );
 }

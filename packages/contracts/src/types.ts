@@ -6,6 +6,7 @@
  */
 
 import type { Language } from './language.ts';
+import type { Region } from './regions.ts';
 
 export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unit' | 'tbsp' | 'tsp' | 'cup' | 'pinch';
 
@@ -50,6 +51,8 @@ export type RecipeIngredientDto = {
 export type RawSuggestionIngredient = {
   name: string;
   optional: boolean;
+  /** Only present when the plan request asked for ingredients to come with the menu. */
+  quantity?: Quantity;
 };
 
 /**
@@ -148,6 +151,12 @@ export type MealPlanEntryDto = {
    * opening the recipe.
    */
   ingredients: string[];
+  /**
+   * The dish's ingredients with amounts, present only when the plan was
+   * requested with `includeIngredients`. Optional so older clients and older
+   * stored entries stay valid; consumers fall back to the per-recipe call.
+   */
+  recipeIngredients?: RecipeIngredientDto[];
 };
 
 export type MealPlanDto = {
@@ -165,6 +174,12 @@ export type MealPlanRequest = {
   exclude: string[];
   /** See `SuggestionsRequest.language`. */
   language?: Language;
+  /** Regional cuisine and market the dishes should suit. Absent means Colombia. */
+  region?: Region;
+  /** When false (the default) no dish appears twice in the plan. */
+  allowRepeats?: boolean;
+  /** When true each entry also carries its ingredients with amounts. */
+  includeIngredients?: boolean;
 };
 
 export type MealPlanResponse = {

@@ -159,7 +159,24 @@ export const es: Record<MessageKey, string> = {
   'menu.unfilled_other':
     '{count} comidas no se pudieron completar sin repetir un plato. Agrega más a tu despensa o permite un par de ingredientes extra.',
   'menu.loader.label': 'Planificando tu semana',
-  'menu.loader.hint': 'Un plato por comida, sin repetir.',
+  'menu.loader.hint': 'Eligiendo un plato para cada comida.',
+  'menu.weeksOf': 'Semanas del {date}',
+  'menu.weekNumber': 'Semana {number}',
+  'menu.settings.open': 'Ajustes del menú',
+  'menu.settings.close': 'Cerrar ajustes del menú',
+  'menu.settings.title': 'Ajustes del menú',
+  'menu.settings.period': 'Período del menú',
+  'menu.settings.period.weekly': 'Una semana',
+  'menu.settings.period.biweekly': 'Dos semanas',
+  'menu.settings.meals': 'Comidas por día',
+  'menu.settings.allowRepeats': 'Permitir platos repetidos',
+  'menu.settings.allowRepeats.hint':
+    'Si está desactivado, ningún plato aparece dos veces en el menú.',
+  'menu.settings.includeIngredients': 'Incluir ingredientes con el menú',
+  'menu.settings.includeIngredients.hint':
+    'Trae los ingredientes junto con el menú, así una receta no necesita otra solicitud. Planificar tarda un poco más.',
+  'menu.settings.region': 'Región',
+  'region.CO': 'Colombia',
 
   'grid.today': 'Hoy',
   'grid.regenerateDay': 'Planificar otra cosa para {day}',

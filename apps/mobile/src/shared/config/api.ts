@@ -13,3 +13,4 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost
 
 export const DEVICE_ID_SETTING_KEY = 'device-id';
 export const PREFERENCES_SETTING_KEY = 'preferences';
+export const MENU_SETTINGS_SETTING_KEY = 'menu-settings';

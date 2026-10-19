@@ -77,7 +77,15 @@ describe('Gemini engine language', () => {
   it('asks for Spanish text in the week prompt', async () => {
     const { engine, sent } = setup(dishes);
 
-    await engine.planWeek({ pantry: ['tomate'], preferences, count: 3, language: 'es' });
+    await engine.planWeek({
+      pantry: ['tomate'],
+      preferences,
+      count: 3,
+      language: 'es',
+      region: 'CO',
+      allowRepeats: false,
+      includeIngredients: false,
+    });
 
     expect(sent[0].prompt).toMatch(/Spanish/);
   });
@@ -111,5 +119,49 @@ describe('Gemini engine language', () => {
     const recipeCall = setup(recipe);
     await recipeCall.engine.recipe({ title: 'x', pantry: [], preferences, language: 'es' });
     expect(recipeCall.sent[0].responseSchema).toEqual(GEMINI_RECIPE_SCHEMA);
+  });
+});
+
+describe('Gemini engine week prompt settings', () => {
+  const run = async (extra: Record<string, unknown> = {}, count = 3) => {
+    const { engine, sent } = setup(dishes);
+    await engine.planWeek({
+      pantry: ['tomate'],
+      preferences,
+      count,
+      language: 'es',
+      region: 'CO',
+      allowRepeats: false,
+      includeIngredients: false,
+      ...extra,
+    });
+    return sent[0];
+  };
+
+  it('asks for dishes, ingredients and measures typical of the region', async () => {
+    const { prompt } = await run();
+    expect(prompt).toContain('Colombia');
+    expect(prompt).toMatch(/metric/i);
+  });
+
+  it('forbids repeats unless allowed', async () => {
+    expect((await run()).prompt).toMatch(/never repeat/i);
+    expect((await run({ allowRepeats: true })).prompt).not.toMatch(/never repeat/i);
+    expect((await run({ allowRepeats: true })).prompt).toMatch(/may repeat/i);
+  });
+
+  it('asks for amounts only when ingredients are included', async () => {
+    const without = await run();
+    const withAmounts = await run({ includeIngredients: true });
+
+    expect(without.responseSchema).toEqual(GEMINI_RESPONSE_SCHEMA);
+    expect(withAmounts.prompt).toMatch(/amount/i);
+    expect(JSON.stringify(withAmounts.responseSchema)).toContain('quantity');
+    expect(JSON.stringify(without.responseSchema)).not.toContain('quantity');
+  });
+
+  it('asks for enough distinct dishes to fill a two week plan', async () => {
+    const { prompt } = await run({}, 42);
+    expect(prompt).toContain('Propose 46 DIFFERENT dishes');
   });
 });
