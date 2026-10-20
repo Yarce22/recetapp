@@ -88,6 +88,40 @@ describe('POST /meal-plan', () => {
     expect(payload.entries[0].dishTitle).toBe('Stew');
   });
 
+  it('plans the week without handing the engine the pantry', async () => {
+    let received: Record<string, unknown> = {};
+    const app = setup({
+      planWeek: async (input) => {
+        received = input as unknown as Record<string, unknown>;
+        return [];
+      },
+    });
+
+    await post(app);
+
+    expect(received).not.toHaveProperty('pantry');
+  });
+
+  it('fills the week with dishes the pantry cannot cook, even in strict mode', async () => {
+    const strict = { ...preferences, suggestionMode: 'strict', maxMissingIngredients: 0 };
+    const app = setup({
+      planWeek: async () => [
+        {
+          title: 'Paella',
+          summary: 'Rice and saffron.',
+          ingredients: [{ name: 'saffron', optional: false }],
+        },
+        { title: 'Curry', summary: 'Spiced.', ingredients: [{ name: 'curry', optional: false }] },
+      ],
+    });
+
+    const response = await post(app, { body: body({ preferences: strict }) });
+
+    const payload = (await response.json()) as MealPlanResponse;
+    expect(payload.entries.map((e) => e.dishTitle)).toEqual(['Paella', 'Curry']);
+    expect(payload.unfilled).toEqual([]);
+  });
+
   it('tells the engine how many dishes the week needs', async () => {
     let asked = 0;
     const app = setup({

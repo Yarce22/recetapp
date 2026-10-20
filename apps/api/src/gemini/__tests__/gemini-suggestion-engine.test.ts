@@ -78,7 +78,6 @@ describe('Gemini engine language', () => {
     const { engine, sent } = setup(dishes);
 
     await engine.planWeek({
-      pantry: ['tomate'],
       preferences,
       count: 3,
       language: 'es',
@@ -126,7 +125,6 @@ describe('Gemini engine week prompt settings', () => {
   const run = async (extra: Record<string, unknown> = {}, count = 3) => {
     const { engine, sent } = setup(dishes);
     await engine.planWeek({
-      pantry: ['tomate'],
       preferences,
       count,
       language: 'es',

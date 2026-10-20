@@ -45,10 +45,11 @@ export type SuggestionEngine = {
   }): Promise<RecipeDto>;
   /**
    * Proposes dishes for a week. Separate from `suggest` because the ask is
-   * different: a varied set sized to the week, not the best matches.
+   * different: a varied set sized to the week, not the best matches. It gets
+   * no pantry: what a week can include is bounded by the region's market, and
+   * the shopping list covers whatever the pantry lacks.
    */
   planWeek(input: {
-    pantry: string[];
     preferences: PreferencesDto;
     count: number;
     language: Language;
@@ -256,17 +257,10 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       });
     }
 
-    const {
-      pantry,
-      preferences,
-      slots,
-      exclude,
-      language,
-      region,
-      allowRepeats,
-      includeIngredients,
-    } = parsed.data;
-    const pantryNames = pantry.map((entry) => entry.name);
+    // The request still carries a pantry because installed apps send one; the
+    // plan no longer depends on it.
+    const { preferences, slots, exclude, language, region, allowRepeats, includeIngredients } =
+      parsed.data;
 
     let proposals: RawDishSuggestion[];
     try {
@@ -274,7 +268,6 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       // the mode filter and the no-repeat rule both remove dishes, so the
       // engine is told the size of the week and expected to overshoot.
       proposals = await deps.engine.planWeek({
-        pantry: pantryNames,
         preferences,
         count: slots.length,
         language,
@@ -290,7 +283,6 @@ export function createApp(deps: { engine: SuggestionEngine; limiter: RateLimiter
       proposals,
       slots,
       exclude,
-      pantry: pantryNames,
       preferences,
       allowRepeats,
       includeIngredients,

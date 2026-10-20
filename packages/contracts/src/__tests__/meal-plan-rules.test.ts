@@ -72,7 +72,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Pasta'), dish('Stew'), dish('Omelette')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -86,7 +85,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Pasta'), dish('pasta'), dish('Stew')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -99,7 +97,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Pasta'), dish('Stew'), dish('Omelette')],
       slots: [slots[0]],
       exclude: ['pasta', 'stew'],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -112,7 +109,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Pasta')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -123,16 +119,26 @@ describe('buildMealPlan', () => {
     ]);
   });
 
-  it('applies the suggestion mode, so strict never plans a dish you cannot cook', () => {
+  it('does not limit the week to the pantry, even in strict mode', () => {
     const result = buildMealPlan({
-      proposals: [dish('Pasta', ['pasta']), dish('Tomato salad', ['tomato'])],
+      proposals: [dish('Pasta', ['pasta', 'basil']), dish('Tomato salad', ['tomato'])],
+      slots: [slots[0], slots[1]],
+      exclude: [],
+      preferences: preferences({ suggestionMode: 'strict', maxMissingIngredients: 0 }),
+    });
+
+    expect(result.entries.map((e) => e.dishTitle)).toEqual(['Pasta', 'Tomato salad']);
+  });
+
+  it('lists every required ingredient on the entry, so the shopping list can subtract the pantry', () => {
+    const result = buildMealPlan({
+      proposals: [dish('Pasta', ['pasta', 'basil'])],
       slots: [slots[0]],
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences({ suggestionMode: 'strict' }),
     });
 
-    expect(result.entries.map((e) => e.dishTitle)).toEqual(['Tomato salad']);
+    expect(result.entries[0].ingredients).toEqual(['pasta', 'basil']);
   });
 
   it('refuses a dish with a disliked ingredient, exactly like the suggestions do', () => {
@@ -140,7 +146,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Satay', ['peanut']), dish('Stew', ['tomato'])],
       slots: [slots[0]],
       exclude: [],
-      pantry: ['tomato', 'peanut'],
       preferences: preferences({ dislikes: ['peanut'] }),
     });
 
@@ -152,7 +157,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Pasta'), dish('Stew')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -165,7 +169,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Tomato salad')],
       slots: [slots[0]],
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -177,7 +180,6 @@ describe('buildMealPlan', () => {
       proposals: [dish('Pasta', ['tomato', 'pasta'])],
       slots: [slots[0]],
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -189,7 +191,6 @@ describe('buildMealPlan', () => {
       proposals: [],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -221,7 +222,6 @@ describe('buildMealPlan with repeats allowed', () => {
       proposals: [dish('Pasta'), dish('Stew')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
       allowRepeats: true,
     });
@@ -235,7 +235,6 @@ describe('buildMealPlan with repeats allowed', () => {
       proposals: [],
       slots,
       exclude: [],
-      pantry: [],
       preferences: preferences(),
       allowRepeats: true,
     });
@@ -249,7 +248,6 @@ describe('buildMealPlan with repeats allowed', () => {
       proposals: [dish('Pasta'), dish('Stew')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 
@@ -275,7 +273,6 @@ describe('buildMealPlan with ingredients included', () => {
       proposals: [withQuantities('Pasta')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
       includeIngredients: true,
     });
@@ -290,7 +287,6 @@ describe('buildMealPlan with ingredients included', () => {
       proposals: [withQuantities('Pasta')],
       slots,
       exclude: [],
-      pantry: ['tomato'],
       preferences: preferences(),
     });
 

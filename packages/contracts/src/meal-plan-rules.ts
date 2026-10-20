@@ -90,7 +90,6 @@ export type BuildMealPlanInput = {
   slots: MealPlanSlotRequest[];
   /** Dish titles already placed elsewhere in the week. */
   exclude: string[];
-  pantry: string[];
   preferences: PreferencesDto;
   /** Let a dish fill more than one slot. Defaults to false. */
   allowRepeats?: boolean;
@@ -120,12 +119,19 @@ export type BuildMealPlanResult = {
  * user asked a meal planner to avoid.
  */
 export function buildMealPlan(input: BuildMealPlanInput): BuildMealPlanResult {
-  // Same gate the Discover screen uses: mode, staples and dislikes. A dish
-  // that is not safe to suggest is not safe to plan either.
+  // The week is not limited by what is in the pantry: the shopping list exists
+  // to cover the difference. Dislikes and dietary rules still apply, through
+  // the same gate the Discover screen uses, so a dish that is not safe to
+  // suggest is not safe to plan either. Only the pantry-based mode is lifted,
+  // and what the dish needs is kept whole for that shopping list to work from.
   const { kept } = enforceSuggestionMode({
     suggestions: input.proposals,
-    pantry: input.pantry,
-    preferences: input.preferences,
+    pantry: [],
+    preferences: {
+      ...input.preferences,
+      suggestionMode: 'flexible',
+      maxMissingIngredients: Number.POSITIVE_INFINITY,
+    },
   });
 
   const used = new Set(input.exclude.map(normalizeIngredientName));

@@ -54,7 +54,10 @@ const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', es: 'Spanish' 
  * language, so the enum values the app branches on (units, difficulty) must
  * stay in English: they are identifiers, not text.
  */
-function languageInstructions(language: Language): string[] {
+function languageInstructions(
+  language: Language,
+  knownNames = 'the pantry or the staples list',
+): string[] {
   const lines = [
     `Write every title, summary, ingredient name and step in ${LANGUAGE_NAMES[language]}.`,
     'Keep the JSON keys and the unit and difficulty values in English, exactly as the schema allows.',
@@ -64,7 +67,7 @@ function languageInstructions(language: Language): string[] {
     // The pantry and the staples are matched against ingredient names by text,
     // so a name the model rewords is a name the app cannot recognise.
     lines.push(
-      'When an ingredient is in the pantry or the staples list, use its name exactly as written there.',
+      `When an ingredient is in ${knownNames}, use its name exactly as written there.`,
     );
   }
 
@@ -118,7 +121,6 @@ function buildRecipePrompt(
 }
 
 export type WeekPromptInput = {
-  pantry: string[];
   preferences: PreferencesDto;
   count: number;
   language: Language;
@@ -128,15 +130,12 @@ export type WeekPromptInput = {
 };
 
 function buildWeekPrompt(input: WeekPromptInput): string {
-  const { pantry, preferences, count, language, region, allowRepeats, includeIngredients } = input;
+  const { preferences, count, language, region, allowRepeats, includeIngredients } = input;
   const profile = REGION_PROFILES[region];
-  const rules =
-    preferences.suggestionMode === 'strict'
-      ? 'Use ONLY ingredients from the pantry list and the staples list.'
-      : `You may introduce at most ${preferences.maxMissingIngredients} ingredients per dish that are not in the pantry.`;
+  const rules = `Use only ingredients that are readily available in ${profile.name}, in ordinary supermarkets and markets. Do not assume the person already owns any particular ingredient: the shopping list will cover what they lack.`;
 
-  // More than the plan needs when repeats are banned, because the mode filter
-  // and the no-repeat rule both discard dishes before anything reaches a slot.
+  // More than the plan needs when repeats are banned, because the dietary
+  // filter and the no-repeat rule both discard dishes before anything reaches a slot.
   const dishes = allowRepeats
     ? Math.min(MAX_PLAN_SUGGESTIONS, Math.max(7, Math.ceil(count / 2)))
     : Math.min(MAX_PLAN_SUGGESTIONS, count + 4);
@@ -146,9 +145,8 @@ function buildWeekPrompt(input: WeekPromptInput): string {
     : `Propose ${dishes} DIFFERENT dishes. Never repeat a dish, not even under a different name. Vary the main ingredient and the cooking method.`;
 
   return [
-    `You plan meals for someone living in ${profile.name}, using what they have at home.`,
+    `You plan meals for someone living in ${profile.name}.`,
     '',
-    `Pantry: ${JSON.stringify(pantry)}`,
     `Staples always available: ${JSON.stringify(preferences.staples)}`,
     `Dietary requirements: ${JSON.stringify(preferences.dietary)}`,
     `Never use these ingredients: ${JSON.stringify(preferences.dislikes)}`,
@@ -162,7 +160,7 @@ function buildWeekPrompt(input: WeekPromptInput): string {
           'Give every ingredient a numeric amount for one serving of the dish and one of the allowed units.',
         ]
       : []),
-    ...languageInstructions(language),
+    ...languageInstructions(language, 'the staples list'),
     'Answer with JSON matching the required schema and nothing else.',
   ].join('\n');
 }
