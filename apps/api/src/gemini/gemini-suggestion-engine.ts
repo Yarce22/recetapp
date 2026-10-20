@@ -22,12 +22,28 @@ const REQUEST_TIMEOUT_MS = 20_000;
 /** A plan can ask for dozens of dishes in one answer, which takes longer. */
 const PLAN_TIMEOUT_MS = 60_000;
 
+/**
+ * Pauses before each retry, so its length is also the retry budget. Short on
+ * purpose: the app gives up on a request after 30s, and a user is waiting.
+ */
+const DEFAULT_RETRY_DELAYS_MS = [600, 1800];
+
+/**
+ * Statuses that mean "Gemini is busy", not "this request is wrong". A 429 is
+ * left out: it is a quota, and hammering it only spends more of it.
+ */
+const TRANSIENT_STATUSES = new Set([500, 502, 503, 504]);
+
 export type GeminiOptions = {
   apiKey: string;
   model: string;
   /** Injectable for tests; defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /** Pauses between retries of a transient failure. Tests pass zeros. */
+  retryDelaysMs?: number[];
 };
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const LANGUAGE_NAMES: Record<Language, string> = { en: 'English', es: 'Spanish' };
 
@@ -163,31 +179,41 @@ function buildWeekPrompt(input: WeekPromptInput): string {
  */
 export function createGeminiSuggestionEngine(options: GeminiOptions): SuggestionEngine {
   const doFetch = options.fetchImpl ?? fetch;
+  const retryDelaysMs = options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS;
+
+  async function send(prompt: string, responseSchema: unknown, timeoutMs: number) {
+    return doFetch(`${ENDPOINT}/${encodeURIComponent(options.model)}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-goog-api-key': options.apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema,
+          temperature: 0.7,
+        },
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  }
 
   async function askForJson(
     prompt: string,
     responseSchema: unknown,
     timeoutMs = REQUEST_TIMEOUT_MS,
   ): Promise<unknown> {
-    const response = await doFetch(
-      `${ENDPOINT}/${encodeURIComponent(options.model)}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-goog-api-key': options.apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema,
-            temperature: 0.7,
-          },
-        }),
-        signal: AbortSignal.timeout(timeoutMs),
-      },
-    );
+    let response = await send(prompt, responseSchema, timeoutMs);
+
+    // Each attempt gets its own timeout, so a stuck call is bounded but a busy
+    // model gets a few seconds to recover before the user sees an error.
+    for (const delay of retryDelaysMs) {
+      if (response.ok || !TRANSIENT_STATUSES.has(response.status)) break;
+      await sleep(delay);
+      response = await send(prompt, responseSchema, timeoutMs);
+    }
 
     if (!response.ok) {
       // Status only. The body can quote the request, and the request carries
